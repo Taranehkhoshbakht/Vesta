@@ -1,88 +1,50 @@
-# ☁️ راهنمای استقرار روی Cloudflare (نسخه اصلاح‌شده)
+# استقرار فروشگاه وستا روی Cloudflare Workers
 
-> 🛠 **رفع خطای `npm ci` / `EUSAGE`:** این خطا به‌خاطر ناهم‌خوانی `package-lock.json` با `package.json` بود (و اضافه‌بودن `wrangler` در devDependencies). هر دو مشکل رفع شد و `npm ci` حالا بدون خطا اجرا می‌شود.
+این پروژه **Cloudflare Worker به‌همراه Static Assets** است، نه پروژه‌ی Cloudflare Pages. فایل Worker در `cloudflare/worker.js` و فایل‌های سایت در `public/` قرار دارند.
 
----
-
-## 🚀 روش پیشنهادی: از داشبورد Cloudflare (بدون ترمینال)
-
-### ۱️⃣ ساخت KV Namespace
-1. [dash.cloudflare.com](https://dash.cloudflare.com) → منوی چپ **Storage & Databases** → **KV** → **Create a namespace**
-2. نام: `DB` → **Create**
-
-### ۲️⃣ ساخت/بازسازی Worker از روی رپو
-1. **Workers & Pages** → **Create** → **Workers** → **Import a repository**
-2. رپو `Taranehkhoshbakht/Vesta` را انتخاب کن
-3. تنظیمات بیلد:
-   - **Build command:** *(خالی بگذار)*
-   - **Deploy command:** `npx wrangler deploy`
-4. **Deploy** → حالا باید با موفقیت بیلد شود ✅
-
-> اگر Worker قبلی را داری: **Settings** → **Build** → **Deploy command** را به `npx wrangler deploy` تغییر بده و **Retry deployment** بزن.
-
-### ۳️⃣ وصل کردن KV — ⚠️ این قدم حیاتی است
-بدون این قدم، Worker بالا می‌آید ولی API ارور می‌دهد.
-
-1. Worker → **Settings** → **Variables & Bindings** (یا **Bindings**) → **Add** → **KV Namespace**
-2. **Variable name:** `DB`  *(دقیقاً همین حروف بزرگ)*
-3. **KV namespace:** `DB`
-4. **Save and Deploy**
-
-### ۴️⃣ تست
-باز کن:
-```
-https://vesta.<your-subdomain>.workers.dev/api/products
-```
-باید JSON محصولات را ببینی. اگر ارور `KV binding "DB" تنظیم نشده است` دیدی → قدم ۳ انجام نشده.
-
-سپس صفحه اصلی → «ورود» → `09037099476` → کد تایید → دکمه «⚙️ پنل مدیریت» ظاهر می‌شود.
-
----
-
-## 💻 روش دوم: ترمینال با Wrangler
+## استقرار از ترمینال
 
 ```bash
-git clone https://github.com/Taranehkhoshbakht/Vesta.git
-cd Vesta
-npm install                       # برای لوکال: npx wrangler@4 -y
-npx wrangler login
-npx wrangler kv namespace create DB
-# → خروجی یک id می‌دهد
-
-# بخش [[kv_namespaces]] در wrangler.toml را از حالت کامنت خارج کن و id را بگذار:
-#   [[kv_namespaces]]
-#   binding = "DB"
-#   id = "abc123..."
-
-npx wrangler dev                  # تست لوکال → http://localhost:8787
-npx wrangler deploy               # انتشار
+npm ci
+npm run cf:dry-run       # بررسی تنظیمات و فایل‌های سایت، بدون انتشار
+npx --yes wrangler@4 login
+npm run cf:kv            # فقط یک‌بار: ساخت KV برای دیتابیس
+npm run cf:deploy
 ```
 
----
+بعد از اجرای `cf:kv`، Wrangler یک شناسه‌ی KV برمی‌گرداند. شناسه را در `wrangler.toml` اضافه کنید:
 
-## ❓ چرا Deploy command باید `npx wrangler deploy` باشد؟
-Cloudflare به‌صورت خودکار تشخیص می‌دهد پروژه یک Worker است. ولی اگر `wrangler` به‌عنوان devDependency نصب باشد، ممکن است نسخه‌های مختلف با هم تداخل کنند. با `npx wrangler deploy` از نسخه‌ی خود محیط بیلد Cloudflare استفاده می‌شود که همیشه سازگار است.
+```toml
+[[kv_namespaces]]
+binding = "DB"
+id = "شناسه‌ای-که-wrangler-برگرداند"
+```
 
----
+سپس دوباره `npm run cf:dry-run` و `npm run cf:deploy` را اجرا کنید. اگر KV را از داشبورد Cloudflare می‌سازید، آن را به Worker با نام دقیق `DB` وصل کنید و **Save and Deploy** بزنید. شناسه‌ی KV محرمانه نیست؛ اما توکن‌های Cloudflare را در فایل‌ها یا چت قرار ندهید.
 
-## 🩺 عیب‌یابی خطاهای رایج
+## استقرار خودکار از GitHub
 
-| خطا | راه‌حل |
-|---|---|
-| `npm ci can only install packages when package.json and package-lock.json are in sync` | ✅ رفع شد. اگر باز دیدی: `rm -rf node_modules package-lock.json && npm install` |
-| `KV binding "DB" تنظیم نشده است` | KV را در Settings → Bindings با نام `DB` اضافه کن |
-| `Assets binding تنظیم نشده است` | `[assets]` در `wrangler.toml` باید حفظ شود |
-| صفحه سفید ولی API سالم است | `[assets] directory` باید `./public` باشد |
-| `Missing wrangler from lock file` | ✅ رفع شد (wrangler از devDependencies حذف شد) |
+1. در Cloudflare از بخش **Workers & Pages**، همین Worker را به مخزن Git متصل کنید؛ مسیر پروژه را روی ریشه‌ی مخزن بگذارید.
+2. **Build command** را خالی بگذارید و **Deploy command** را `npm run cf:deploy` قرار دهید.
+3. **Production branch** باید همان برنچی باشد که تغییرات را در آن commit و push می‌کنید. Cloudflare تغییرات محلی یا push‌نشده را نمی‌بیند.
+4. مطمئن شوید KV با نام `DB` برای Worker تنظیم شده است؛ در غیر این صورت Worker ممکن است منتشر شود، اما API فروشگاه کار نخواهد کرد.
 
----
+اسکریپت‌های `cf:dev`، `cf:dry-run`، `cf:deploy` و `cf:kv` از Wrangler نسخه‌ی ۴ با `npx` استفاده می‌کنند؛ نصب Wrangler به‌عنوان dependency پروژه لازم نیست.
 
-## 🔐 یادآوری امنیتی
-توکن GitHub که در چت فرستادی را **حتماً revoke کن**:
-GitHub → Settings → Developer settings → Personal access tokens → Delete
+## بررسی انتشار
 
----
+پس از Deploy این آدرس را باز کنید:
 
-## 📌 دو تغییر مهم نسبت به نسخه اول
-1. **`wrangler` از devDependencies حذف شد** — دلیل اصلی خطای `npm ci`. حالا نسخه‌ی خود Cloudflare استفاده می‌شود و بیلد سبک‌تر است (به‌جای ~۴۰ بسته اضافه، فقط ۷۱ بسته اکسپرس).
-2. **`[[kv_namespaces]]` در wrangler.toml کامنت شد** — چون id KV شما را ندارم و `REPLACE_WITH_YOUR_KV_ID` باعث خطای دیپلوی می‌شد. به‌جایش KV را از داشبورد با نام `DB` وصل کن.
+```text
+https://<نام-worker>.<زیر دامنه‌ی شما>.workers.dev/api/products
+```
+
+پاسخ موفق، JSON شامل محصولات و دسته‌هاست.
+
+## خطاهای رایج
+
+- **`KV binding "DB" تنظیم نشده است`** — KV را با نام دقیق `DB` به Worker وصل کنید یا شناسه‌ی درست را در `wrangler.toml` بگذارید.
+- **`Authentication` / `Not logged in`** — برای استقرار محلی `npx --yes wrangler@4 login` را اجرا کنید. در Git integration، اتصال Cloudflare به Git و دسترسی‌های آن را بررسی کنید؛ توکن را برای کسی نفرستید.
+- **`wrangler: command not found`** — از `npm run cf:deploy` استفاده کنید؛ اسکریپت خودش Wrangler ۴ را با `npx` اجرا می‌کند.
+- **انتشار انجام می‌شود ولی نسخه‌ی قبلی دیده می‌شود** — Production branch و آخرین commit موفق در بخش Deployments را بررسی کنید؛ push‌کردن به برنچ دیگری لزوماً Production را به‌روزرسانی نمی‌کند.
+- **صفحه باز می‌شود ولی API کار نمی‌کند** — Binding دیتابیس `DB` را بررسی کنید. درخواست `/api/*` به Worker هدایت می‌شود و Static Assets از `public/` سرو می‌شوند.

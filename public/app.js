@@ -75,8 +75,8 @@ function openModal(html) {
 function closeModal() {
   $('modalOverlay').classList.add('hidden');
   $('modalBox').innerHTML = '';
-  if (!$('bottomSheet').classList.contains('hidden') === false) document.body.style.overflow = '';
-  else document.body.style.overflow = '';
+  document.body.style.overflow = '';
+  setActiveTab('home');
 }
 function openSheet(title, bodyHtml, footHtml = '') {
   $('sheetTitle').textContent = title;
@@ -89,6 +89,7 @@ function openSheet(title, bodyHtml, footHtml = '') {
 function closeSheet() {
   $('bottomSheet').classList.add('hidden');
   document.body.style.overflow = '';
+  setActiveTab('home');
 }
 
 function saveCart() { localStorage.setItem('vesta_cart', JSON.stringify(state.cart)); updateBadges(); }
@@ -101,11 +102,26 @@ function updateBadges() {
   const tb = $('tabCartBadge');
   if (tb) { tb.textContent = fmt(c); tb.classList.toggle('zero', c === 0); }
 }
+function setActiveTab(view = 'home') {
+  document.querySelectorAll('.tab').forEach(tab => tab.classList.toggle('active', tab.dataset.view === view));
+}
 
 const isAdmin = () => state.user && ['super_admin', 'manager', 'support', 'editor'].includes(state.user.role);
 const roleName = r => ({ super_admin: 'مدیر کل', manager: 'مدیر فروش', support: 'پشتیبان', editor: 'ویراستار محصول', customer: 'مشتری' }[r] || r);
 const statusName = s => ({ pending: 'در انتظار بررسی', confirmed: 'تایید شده', shipped: 'ارسال شده', delivered: 'تحویل داده شده', cancelled: 'لغو شده' }[s] || s);
 const catName = id => (state.categories.find(c => c.id === id) || {}).name || '';
+const PRODUCT_FALLBACKS = {
+  'cat-shoes': 'shoes', 'cat-winter': 'winter', 'cat-summer': 'summer',
+  'cat-accessories': 'accessories', 'cat-women': 'women', 'cat-men': 'men',
+};
+function localImageFallback(item = {}) {
+  const id = item.categoryId || item.id || '';
+  return `/images/product-${PRODUCT_FALLBACKS[id] || 'fashion'}.svg`;
+}
+function imageAttrs(item = {}, priority = false) {
+  const fallback = localImageFallback(item);
+  return `loading="${priority ? 'eager' : 'lazy'}" decoding="async" referrerpolicy="no-referrer" ${priority ? 'fetchpriority="high"' : ''} onerror="this.onerror=null;this.src='${fallback}'"`;
+}
 
 /* ---------------- PWA ---------------- */
 if ('serviceWorker' in navigator) {
@@ -178,14 +194,81 @@ function renderCatNav() {
     ).join('');
 }
 function renderCats() {
-  const fallback = 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=500&auto=format&fit=crop';
-  $('catGrid').innerHTML = state.categories.map(c => `
-    <button class="cat-card" onclick="setCat('${c.id}')">
-      <img src="${esc(c.image || fallback)}" alt="${esc(c.name)}" loading="lazy">
+  $('catGrid').innerHTML = state.categories.map((c, index) => `
+    <button class="cat-card" style="background-image:url('${localImageFallback(c)}')" onclick="setCat('${c.id}')">
+      <img src="${esc(c.image || localImageFallback(c))}" alt="${esc(c.name)}" ${imageAttrs(c, index < 3)}>
       <span>${esc(c.name)}</span>
     </button>`).join('');
 }
+const MENU_HOME = '<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.8V21h14V9.8"/></svg>';
+let menuReturnFocus = null;
+function menuEntry(icon, label, onClick, detail = '') {
+  return `<button class="menu-entry" type="button" onclick="${onClick}">
+    <span class="menu-entry-icon">${icon}</span><span class="menu-entry-copy"><b>${esc(label)}</b>${detail ? `<small>${esc(detail)}</small>` : ''}</span><span class="menu-entry-arrow">‹</span>
+  </button>`;
+}
+function renderMobileMenu() {
+  const cartCount = state.cart.reduce((sum, item) => sum + item.qty, 0);
+  $('mobileMenuNav').innerHTML = `
+    <section class="mobile-menu-group" aria-label="فروشگاه">
+      <b class="mobile-menu-label">فروشگاه</b>
+      ${menuEntry(MENU_HOME, 'صفحه اصلی', 'closeMenu();goHome()')}
+      ${menuEntry(ICO.shirt, 'مشاهده همه محصولات', 'closeMenu();scrollToProducts()')}
+      ${menuEntry(ICO.heart, 'علاقه‌مندی‌ها', 'closeMenu();toggleWishlistView()', `${fmt(state.wishlist.length)} محصول`)}
+      ${menuEntry(ICO.cart, 'سبد خرید', 'closeMenu();openCart()', `${fmt(cartCount)} کالا`)}
+    </section>
+    <section class="mobile-menu-group" aria-label="حساب کاربری">
+      <b class="mobile-menu-label">حساب کاربری</b>
+      ${state.user
+        ? `${menuEntry(ICO.user, 'حساب کاربری من', 'closeMenu();openAccount()', state.user.name)}
+           ${menuEntry(ICO.box, 'سفارش‌های من', 'closeMenu();openMyOrders()')}
+           ${menuEntry(ICO.wallet, 'کیف پول', 'closeMenu();openWallet()')}
+           ${menuEntry(ICO.star, 'باشگاه مشتریان', 'closeMenu();openClub()')}
+           ${isAdmin() ? menuEntry(ICO.cog, 'پنل مدیریت', 'closeMenu();showView(\'admin\')') : ''}`
+        : menuEntry(ICO.user, 'ورود / ثبت‌نام', 'closeMenu();openAuth()')}
+    </section>
+    <section class="mobile-menu-group mobile-menu-categories" aria-label="دسته‌بندی‌ها">
+      <b class="mobile-menu-label">خرید بر اساس دسته</b>
+      <div class="menu-category-grid">
+        <button type="button" class="menu-category ${!state.activeCat ? 'selected' : ''}" data-category="" onclick="selectMenuCategory(this)">همه محصولات</button>
+        ${state.categories.map(c => `<button type="button" class="menu-category ${state.activeCat === c.id ? 'selected' : ''}" data-category="${esc(c.id)}" onclick="selectMenuCategory(this)">${esc(c.name)}</button>`).join('')}
+      </div>
+    </section>
+    <div class="mobile-menu-footer">ارسال سریع · بازگشت ۷ روزه · خرید امن</div>`;
+}
+function openMenu() {
+  const backdrop = $('mobileMenuBackdrop');
+  if (!backdrop) return;
+  menuReturnFocus = document.activeElement;
+  renderMobileMenu();
+  backdrop.classList.remove('hidden');
+  backdrop.setAttribute('aria-hidden', 'false');
+  $('menuToggle').setAttribute('aria-expanded', 'true');
+  document.body.style.overflow = 'hidden';
+  requestAnimationFrame(() => $('menuClose').focus());
+}
+function closeMenu() {
+  const backdrop = $('mobileMenuBackdrop');
+  if (!backdrop || backdrop.classList.contains('hidden')) return;
+  backdrop.classList.add('hidden');
+  backdrop.setAttribute('aria-hidden', 'true');
+  $('menuToggle').setAttribute('aria-expanded', 'false');
+  const stillOpen = ['modalOverlay', 'bottomSheet', 'drawerOverlay'].some(id => !$(id).classList.contains('hidden'));
+  document.body.style.overflow = stillOpen ? 'hidden' : '';
+  if (menuReturnFocus && menuReturnFocus.isConnected) menuReturnFocus.focus({ preventScroll: true });
+  menuReturnFocus = null;
+}
+function selectMenuCategory(button) {
+  const id = button.dataset.category || '';
+  closeMenu();
+  setCat(id);
+}
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && $('mobileMenuBackdrop') && !$('mobileMenuBackdrop').classList.contains('hidden')) closeMenu();
+});
+
 function openCatsSheet() {
+  setActiveTab('cats');
   openSheet('دسته‌بندی‌ها',
     `<div class="a-list">
       <button class="a-item" style="text-align:right;width:100%" onclick="closeSheet();setCat('')">
@@ -193,7 +276,7 @@ function openCatsSheet() {
       </button>
       ${state.categories.map(c => `
         <button class="a-item" style="text-align:right;width:100%" onclick="closeSheet();setCat('${c.id}')">
-          <img src="${esc(c.image || '')}" alt="">
+          <img src="${esc(c.image || localImageFallback(c))}" alt="" ${imageAttrs(c)}>
           <span class="grow"><b>${esc(c.name)}</b></span><span>›</span>
         </button>`).join('')}
     </div>`);
@@ -206,6 +289,7 @@ function setCat(id) {
   $('productsSec').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 function goHome() {
+  setActiveTab('home');
   showView('home');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -215,9 +299,7 @@ function showView(v) {
   $('shopView').classList.toggle('hidden', isAdminView);
   $('adminView').classList.toggle('hidden', !isAdminView);
   document.body.classList.toggle('admin-mode', isAdminView);
-  document.querySelectorAll('.tab').forEach(t =>
-    t.classList.toggle('active', !isAdminView && t.dataset.view === 'home')
-  );
+  setActiveTab(isAdminView ? '' : 'home');
   if (isAdminView) { renderAdminTabs(); adminTab(state.adminTab); }
   else window.scrollTo({ top: 0 });
   document.body.style.overflow = '';
@@ -310,11 +392,11 @@ function clearFilters() {
 /* ---------------- کارت محصول ---------------- */
 function offPercent(p) { return p.oldPrice && p.oldPrice > p.price ? Math.round((1 - p.price / p.oldPrice) * 100) : 0; }
 
-function productCard(p) {
+function productCard(p, index = Infinity) {
   const wished = state.wishlist.includes(p.id);
   return `<div class="pcard" onclick="openProduct('${p.id}')">
-    <div class="pimg">
-      <img src="${esc(p.image)}" alt="${esc(p.title)}" loading="lazy" decoding="async">
+    <div class="pimg" style="background-image:url('${localImageFallback(p)}')">
+      <img src="${esc(p.image || localImageFallback(p))}" alt="${esc(p.title)}" ${imageAttrs(p, index < 4)}>
       ${offPercent(p) ? `<span class="off">٪${fmt(offPercent(p))}</span>` : ''}
       <button class="wish ${wished ? 'on' : ''}" onclick="event.stopPropagation();toggleWish('${p.id}')" aria-label="علاقه‌مندی">${ICO.heart}</button>
     </div>
@@ -338,7 +420,7 @@ function productCard(p) {
 function renderProducts() {
   const list = state.products.slice(0, state.visible);
   $('productGrid').innerHTML = list.length
-    ? list.map(productCard).join('')
+    ? list.map((product, index) => productCard(product, index)).join('')
     : `<div class="empty">محصولی پیدا نشد<br><button class="btn btn-outline" style="margin-top:12px" onclick="clearFilters()">حذف فیلترها</button></div>`;
   const more = state.products.length > state.visible;
   $('loadMore').classList.toggle('hidden', !more);
@@ -348,7 +430,7 @@ function loadMore() { state.visible += 12; renderProducts(); }
 function renderFlash() {
   const flash = state.allProducts.filter(p => p.isFlash);
   $('flashRow').innerHTML = flash.length
-    ? flash.map(productCard).join('')
+    ? flash.map((product, index) => productCard(product, index)).join('')
     : '<div class="empty">فروش فلش به‌زودی...</div>';
 }
 function startCountdown() {
@@ -374,6 +456,7 @@ function toggleWish(id) {
   toast(i >= 0 ? 'از علاقه‌مندی‌ها حذف شد' : 'به علاقه‌مندی‌ها اضافه شد');
 }
 async function toggleWishlistView() {
+  setActiveTab('wish');
   let items = state.allProducts.filter(p => state.wishlist.includes(p.id));
   const missing = state.wishlist.filter(id => !state.allProducts.some(p => p.id === id));
   for (const id of missing) {
@@ -402,7 +485,7 @@ async function openProduct(id) {
       </div>`).join('');
 
     openModal(`<div class="pdetail">
-      <div><img class="main" src="${esc(p.image)}" alt="${esc(p.title)}"></div>
+      <div><img class="main" src="${esc(p.image || localImageFallback(p))}" alt="${esc(p.title)}" ${imageAttrs(p, true)}></div>
       <div>
         <span class="pcat" style="font-size:11px;color:var(--c60);font-weight:700">${esc(catName(p.categoryId))}</span>
         <h2>${esc(p.title)}</h2>
@@ -479,7 +562,7 @@ function addToCart(id, fromDetail = false) {
     if (ex.qty >= p.stock) return toast('بیشتر از موجودی انبار نمی‌توانید اضافه کنید', true);
     ex.qty++;
   } else {
-    state.cart.push({ productId: id, title: p.title, image: p.image, price: p.price, qty: 1, size, color });
+    state.cart.push({ productId: id, title: p.title, image: p.image, categoryId: p.categoryId, price: p.price, qty: 1, size, color });
   }
   saveCart(); renderCart();
   toast('به سبد خرید اضافه شد');
@@ -494,6 +577,7 @@ function changeQty(idx, d) {
 function removeFromCart(idx) { state.cart.splice(idx, 1); saveCart(); renderCart(); }
 function cartSubtotal() { return state.cart.reduce((s, i) => s + i.price * i.qty, 0); }
 function openCart() {
+  setActiveTab('cart');
   renderCart();
   $('cartDrawer').classList.remove('hidden');
   $('drawerOverlay').classList.remove('hidden');
@@ -503,6 +587,7 @@ function closeCart() {
   $('cartDrawer').classList.add('hidden');
   $('drawerOverlay').classList.add('hidden');
   document.body.style.overflow = '';
+  setActiveTab('home');
 }
 function renderCart() {
   const box = $('cartItems');
@@ -512,7 +597,7 @@ function renderCart() {
     return;
   }
   box.innerHTML = state.cart.map((i, idx) => `<div class="cart-item">
-    <img src="${esc(i.image)}" alt="">
+    <img src="${esc(i.image || localImageFallback(i))}" alt="" ${imageAttrs(i)}>
     <div style="flex:1;min-width:0">
       <b>${esc(i.title)}</b><br>
       <small>سایز ${esc(i.size)} · <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:${esc(i.color)};vertical-align:middle"></span></small><br>
@@ -614,6 +699,7 @@ async function logout() {
 
 /* ---------------- حساب کاربری (شیت) ---------------- */
 async function openAccount() {
+  setActiveTab('me');
   if (!state.user) return openAuth();
   const u = state.user;
   openSheet('حساب کاربری من',
@@ -890,7 +976,7 @@ async function renderDashboard() {
       <h3>پرفروش‌ترین محصولات</h3>
       <div class="a-list">
         ${s.topProducts.map(p => `<div class="a-item">
-          <img src="${esc(p.image)}" alt="">
+          <img src="${esc(p.image || localImageFallback(p))}" alt="" ${imageAttrs(p)}>
           <div class="grow"><b>${esc(p.title)}</b><small>${fmt(p.soldCount || 0)} فروش · موجودی ${fmt(p.stock)}</small></div>
           <b style="font-size:11.5px;white-space:nowrap">${fmt(p.price)}</b>
         </div>`).join('')}
@@ -910,7 +996,7 @@ async function renderAdminProducts() {
       </div>
       <div class="a-list">
         ${d.products.map(p => `<div class="a-item">
-          <img src="${esc(p.image)}" alt="">
+          <img src="${esc(p.image || localImageFallback(p))}" alt="" ${imageAttrs(p)}>
           <div class="grow">
             <b>${esc(p.title)}</b>
             <small>${esc(catName(p.categoryId))} · ${fmt(p.price)} تومان · موجودی ${fmt(p.stock)}</small>
@@ -995,7 +1081,7 @@ async function renderAdminCategories() {
         ${state.categories.map(c => {
           const count = d.products.filter(p => p.categoryId === c.id).length;
           return `<div class="a-item">
-            ${c.image ? `<img src="${esc(c.image)}" alt="">` : `<span style="width:46px;height:46px;border-radius:9px;background:var(--c30-light);color:var(--c60);display:grid;place-items:center">${ICO.folder}</span>`}
+            ${c.image ? `<img src="${esc(c.image)}" alt="" ${imageAttrs(c)}>` : `<span style="width:46px;height:46px;border-radius:9px;background:var(--c30-light);color:var(--c60);display:grid;place-items:center">${ICO.folder}</span>`}
             <div class="grow"><b>${esc(c.name)}</b><small>${fmt(count)} محصول</small></div>
             <div class="a-actions row">
               <button class="mini-btn mini-edit" onclick="categoryForm('${c.id}')">${ICO.edit}</button>
