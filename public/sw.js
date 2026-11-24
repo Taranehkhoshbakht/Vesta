@@ -1,5 +1,5 @@
 /* ===== Service Worker پوشاک وستا ===== */
-const VERSION = 'vesta-v5';
+const VERSION = 'vesta-v6';
 const SHELL = `${VERSION}-shell`;
 const RUNTIME = `${VERSION}-runtime`;
 const IMG_CACHE = `${VERSION}-img`;
@@ -8,6 +8,8 @@ const SHELL_FILES = [
   '/',
   '/index.html',
   '/style.css',
+  '/mock-seed.js',
+  '/mock-api.js',
   '/app.js',
   '/manifest.json',
   '/offline.html',
