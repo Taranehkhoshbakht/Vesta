@@ -1,0 +1,20 @@
+{
+  "name": "poshak-shop",
+  "version": "1.0.0",
+  "description": "فروشگاه پوشاک وستا - فروشگاه کامل با پنل مدیریت، باشگاه مشتریان و کیف پول",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "cf:dev": "wrangler dev",
+    "cf:deploy": "wrangler deploy",
+    "cf:kv": "wrangler kv namespace create DB"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "wrangler": "^3.90.0"
+  }
+}

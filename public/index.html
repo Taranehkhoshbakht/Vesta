@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>پوشاک وستا | فروشگاه لباس، کفش و اکسسوری</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ======= نوار بالا ======= -->
+<div class="topbar">
+  <span>🚚 ارسال رایگان برای خرید بالای <b id="freeShipTop">۱٬۰۰۰٬۰۰۰</b> تومان</span>
+  <span class="topbar-left">🎁 هدیه عضویت: <b>۵۰٬۰۰۰ تومان</b> در کیف پول + <b>۱۰۰ امتیاز</b> باشگاه مشتریان</span>
+</div>
+
+<!-- ======= هدر ======= -->
+<header class="header">
+  <div class="container header-in">
+    <a class="logo" href="#" onclick="showView('home');return false">
+      <span class="logo-badge">و</span>
+      <span><b>پوشاک وستا</b><small>VESTA FASHION</small></span>
+    </a>
+    <div class="searchbox">
+      <input id="searchInput" placeholder="جستجو در محصولات... مثلاً: کاپشن، کفش، هودی">
+      <button onclick="doSearch()">🔍</button>
+    </div>
+    <nav class="header-actions">
+      <button class="icon-btn" onclick="toggleWishlistView()" title="علاقه‌مندی‌ها">❤️ <span id="wishCount" class="badge">۰</span></button>
+      <button class="icon-btn" onclick="openCart()" title="سبد خرید">🛒 <span id="cartCount" class="badge">۰</span></button>
+      <button id="authBtn" class="btn btn-primary" onclick="openAuth()">ورود / ثبت‌نام</button>
+      <button id="adminBtn" class="btn btn-dark hidden" onclick="showView('admin')">⚙️ پنل مدیریت</button>
+    </nav>
+  </div>
+  <div class="catnav"><div class="container" id="catNav"></div></div>
+</header>
+
+<!-- ======= ویوی فروشگاه ======= -->
+<main id="shopView">
+  <!-- هیرو -->
+  <section class="hero">
+    <div class="container hero-in">
+      <div class="hero-text">
+        <span class="hero-tag">✨ کالکشن جدید پاییز و زمستان ۱۴۰۵</span>
+        <h1>استایل تو،<br><span>امضای توئه</span></h1>
+        <p>لباس، کفش و اکسسوری با کیفیت درجه‌یک و قیمت منصفانه. با باشگاه مشتریان وستا امتیاز جمع کن، کیف پولت رو شارژ کن و هر خریدت رو سودآورتر کن.</p>
+        <div class="hero-btns">
+          <button class="btn btn-primary btn-lg" onclick="scrollToProducts()">🛍️ خرید کن</button>
+          <button class="btn btn-outline btn-lg" onclick="openClub()">⭐ باشگاه مشتریان</button>
+        </div>
+        <div class="hero-stats">
+          <div><b>+۱۲٬۰۰۰</b><span>مشتری وفادار</span></div>
+          <div><b>۴.۸ از ۵</b><span>امتیاز رضایت</span></div>
+          <div><b>۲۴ ساعت</b><span>تحویل سریع</span></div>
+        </div>
+      </div>
+      <div class="hero-img">
+        <img src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=900&auto=format&fit=crop" alt="فروشگاه پوشاک">
+        <div class="hero-card">🔥 تا ۴۰٪ تخفیف<br><small>فروش ویژه محدود</small></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- فروش فلش -->
+  <section class="container flash-sec">
+    <div class="sec-head">
+      <h2>⚡ فروش فلش</h2>
+      <div class="countdown">پایان فروش در <b id="countdown">--:--:--</b></div>
+    </div>
+    <div id="flashRow" class="product-row"></div>
+  </section>
+
+  <!-- دسته‌بندی‌ها -->
+  <section class="container">
+    <div class="sec-head"><h2>دسته‌بندی‌ها</h2></div>
+    <div id="catGrid" class="cat-grid"></div>
+  </section>
+
+  <!-- محصولات -->
+  <section class="container" id="productsSec">
+    <div class="sec-head">
+      <h2 id="productsTitle">همه محصولات</h2>
+      <select id="sortSel" onchange="applyFilters()">
+        <option value="new">جدیدترین</option>
+        <option value="popular">پرفروش‌ترین</option>
+        <option value="cheap">ارزان‌ترین</option>
+        <option value="expensive">گران‌ترین</option>
+        <option value="rating">بالاترین امتیاز</option>
+      </select>
+    </div>
+    <div class="shop-layout">
+      <aside class="filters">
+        <h3>فیلترها</h3>
+        <label>حداقل قیمت (تومان)</label>
+        <input type="number" id="minPrice" placeholder="مثلاً ۵۰۰۰۰۰" onchange="applyFilters()">
+        <label>حداکثر قیمت (تومان)</label>
+        <input type="number" id="maxPrice" placeholder="مثلاً ۲۰۰۰۰۰۰" onchange="applyFilters()">
+        <label class="check"><input type="checkbox" id="onlyFlash" onchange="applyFilters()"> فقط تخفیف‌دارها</label>
+        <button class="btn btn-outline w100" onclick="clearFilters()">حذف فیلترها</button>
+        <div class="side-promo">
+          <b>🎁 کد تخفیف اولین خرید</b>
+          <code>WELCOME10</code>
+          <small>۱۰٪ تخفیف تا ۲۰۰ هزار تومان</small>
+        </div>
+      </aside>
+      <div id="productGrid" class="product-grid"></div>
+    </div>
+  </section>
+
+  <!-- امکانات -->
+  <section class="container features">
+    <div class="feat"><span>🚚</span><b>ارسال سریع</b><small>تحویل ۲۴ تا ۴۸ ساعته در سراسر کشور</small></div>
+    <div class="feat"><span>↩️</span><b>۷ روز ضمانت بازگشت</b><small>بدون قید و شرط، وجه شما برمی‌گردد</small></div>
+    <div class="feat"><span>👛</span><b>کیف پول اختصاصی</b><small>شارژ کن و با تخفیف بیشتر خرید کن</small></div>
+    <div class="feat"><span>⭐</span><b>باشگاه مشتریان</b><small>با هر خرید امتیاز بگیر و سطحت رو بالا ببر</small></div>
+  </section>
+
+  <!-- باشگاه مشتریان -->
+  <section class="container club-banner">
+    <div>
+      <h2>⭐ باشگاه مشتریان وستا</h2>
+      <p>با هر ۱۰۰ هزار تومان خرید، <b>۱۰ امتیاز</b> بگیر. امتیازها = تخفیف در خرید بعدی + پاداش کیف پول. سطوح: برنزی، نقره‌ای و طلایی با تخفیف‌های ویژه.</p>
+      <button class="btn btn-primary" onclick="openClub()">مشاهده باشگاه من</button>
+    </div>
+    <div class="club-tiers">
+      <div class="tier" style="--c:#b07a4f"><b>برنزی</b><span>۵۰۰+ امتیاز</span><small>۱٪ تخفیف</small></div>
+      <div class="tier" style="--c:#8a94a6"><b>نقره‌ای</b><span>۲۰۰۰+ امتیاز</span><small>۳٪ تخفیف</small></div>
+      <div class="tier" style="--c:#c9a227"><b>طلایی</b><span>۵۰۰۰+ امتیاز</span><small>۵٪ تخفیف</small></div>
+    </div>
+  </section>
+</main>
+
+<!-- ======= ویوی پنل مدیریت ======= -->
+<main id="adminView" class="hidden">
+  <div class="admin-layout container">
+    <aside class="admin-side">
+      <div class="admin-user" id="adminUserBox"></div>
+      <button data-tab="dashboard" class="side-btn active" onclick="adminTab('dashboard')">📊 داشبورد</button>
+      <button data-tab="products" class="side-btn" onclick="adminTab('products')">👕 محصولات</button>
+      <button data-tab="categories" class="side-btn" onclick="adminTab('categories')">🗂️ دسته‌بندی‌ها</button>
+      <button data-tab="orders" class="side-btn" onclick="adminTab('orders')">📦 سفارش‌ها</button>
+      <button data-tab="users" class="side-btn" onclick="adminTab('users')">👥 مشتریان</button>
+      <button data-tab="subadmins" class="side-btn super-only" onclick="adminTab('subadmins')">🛡️ زیرمدیران</button>
+      <button data-tab="coupons" class="side-btn" onclick="adminTab('coupons')">🎟️ کدهای تخفیف</button>
+      <button data-tab="settings" class="side-btn super-only" onclick="adminTab('settings')">⚙️ تنظیمات فروشگاه</button>
+      <button class="side-btn" onclick="showView('home')">🏠 بازگشت به فروشگاه</button>
+    </aside>
+    <section class="admin-main" id="adminMain"></section>
+  </div>
+</main>
+
+<!-- ======= فوتر ======= -->
+<footer>
+  <div class="container footer-in">
+    <div><b>پوشاک وستا</b><p>فروشگاه آنلاین لباس، کفش و اکسسوری با ضمانت اصالت کالا و ۷ روز مهلت بازگشت.</p></div>
+    <div><b>دسترسی سریع</b><a href="#" onclick="showView('home');return false">صفحه اصلی</a><a href="#" onclick="openClub();return false">باشگاه مشتریان</a><a href="#" onclick="openWallet();return false">کیف پول</a></div>
+    <div><b>پشتیبانی</b><p>📞 ۰۹۹۶۱۲۱۷۹۴۵<br>✉️ support@vesta.shop<br>🕐 شنبه تا پنجشنبه ۹ تا ۱۸</p></div>
+  </div>
+  <div class="copyright">© ۱۴۰۵ پوشاک وستا — تمامی حقوق محفوظ است.</div>
+</footer>
+
+<!-- ======= مودال‌ها ======= -->
+<div id="modalOverlay" class="overlay hidden" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modalBox"></div>
+</div>
+
+<!-- سبد خرید کشویی -->
+<div id="cartDrawer" class="drawer hidden">
+  <div class="drawer-head"><b>🛒 سبد خرید</b><button onclick="closeCart()">✕</button></div>
+  <div id="cartItems" class="drawer-body"></div>
+  <div class="drawer-foot" id="cartFoot"></div>
+</div>
+<div id="drawerOverlay" class="overlay hidden" onclick="closeCart()"></div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

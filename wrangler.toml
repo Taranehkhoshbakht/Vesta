@@ -1,0 +1,20 @@
+# Cloudflare Workers + Static Assets — فروشگاه پوشاک وستا
+# راهنما: https://developers.cloudflare.com/workers/wrangler/configuration/
+name = "vesta"
+main = "cloudflare/worker.js"
+compatibility_date = "2024-11-01"
+
+# فرانت‌اند (فایل‌های استاتیک)
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# دیتابیس KV — بعد از ساخت KV در Cloudflare، id را اینجا جایگزین کنید
+# ساخت KV:  wrangler kv namespace create DB
+[[kv_namespaces]]
+binding = "DB"
+id = "REPLACE_WITH_YOUR_KV_ID"
+preview_id = "REPLACE_WITH_YOUR_KV_ID"
+
+[observability]
+enabled = true
