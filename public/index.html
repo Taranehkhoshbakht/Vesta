@@ -38,6 +38,9 @@
 <!-- ======= هدر ======= -->
 <header class="header">
   <div class="header-in">
+    <button id="menuToggle" class="hbtn menu-toggle" onclick="openMenu()" aria-label="باز کردن منو" aria-controls="mobileMenuBackdrop" aria-expanded="false">
+      <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
     <button class="hbtn logo" onclick="goHome()" aria-label="صفحه اصلی">
       <span class="logo-badge">V</span>
       <span class="logo-txt"><b>وستا</b><small>VESTA</small></span>
@@ -64,6 +67,17 @@
   <div class="catnav"><div class="catnav-in" id="catNav"></div></div>
 </header>
 
+<!-- ======= منوی موبایل ======= -->
+<div id="mobileMenuBackdrop" class="mobile-menu-backdrop hidden" aria-hidden="true" onclick="if(event.target===this)closeMenu()">
+  <aside class="mobile-menu" role="dialog" aria-modal="true" aria-labelledby="mobileMenuTitle">
+    <div class="mobile-menu-head">
+      <div class="mobile-menu-brand"><span class="logo-badge">V</span><div><b id="mobileMenuTitle">وستا</b><small>پوشاک، کفش و اکسسوری</small></div></div>
+      <button id="menuClose" class="menu-close" onclick="closeMenu()" aria-label="بستن منو">✕</button>
+    </div>
+    <div id="mobileMenuNav" class="mobile-menu-nav"></div>
+  </aside>
+</div>
+
 <!-- ======= ویوی فروشگاه ======= -->
 <main id="shopView">
   <section class="hero">
@@ -82,24 +96,11 @@
           <div><b>۲۴ ساعت</b><span>ارسال سریع</span></div>
         </div>
       </div>
-      <div class="hero-img">
-        <img src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=900&auto=format&fit=crop" alt="" width="900" height="600">
+      <div class="hero-img" style="background-image:url('/images/product-fashion.svg');background-size:cover;background-position:center">
+        <img src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=900&auto=format&fit=crop" alt="" width="900" height="600" loading="eager" fetchpriority="high" decoding="async" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/images/product-fashion.svg'">
         <div class="hero-card"><b style="color:var(--bad)">تا ۴۰٪ تخفیف</b><br><small>فروش ویژه محدود</small></div>
       </div>
     </div>
-  </section>
-
-  <section class="flash-sec">
-    <div class="sec-head">
-      <h2>فروش فلش ⚡</h2>
-      <div class="countdown"><b id="countdown">--:--:--</b></div>
-    </div>
-    <div id="flashRow" class="hscroll"></div>
-  </section>
-
-  <section class="sec">
-    <div class="sec-head"><h2>دسته‌بندی‌ها</h2></div>
-    <div id="catGrid" class="cat-grid"></div>
   </section>
 
   <section class="sec" id="productsSec">
@@ -116,6 +117,19 @@
     </div>
     <div id="productGrid" class="product-grid"></div>
     <button class="load-more hidden" id="loadMore" onclick="loadMore()">محصولات بیشتر</button>
+  </section>
+
+  <section class="flash-sec">
+    <div class="sec-head">
+      <h2>فروش فلش ⚡</h2>
+      <div class="countdown"><b id="countdown">--:--:--</b></div>
+    </div>
+    <div id="flashRow" class="hscroll"></div>
+  </section>
+
+  <section class="sec">
+    <div class="sec-head"><h2>دسته‌بندی‌ها</h2></div>
+    <div id="catGrid" class="cat-grid"></div>
   </section>
 
   <section class="sec features">

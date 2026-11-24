@@ -6,9 +6,10 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "cf:dev": "wrangler dev",
-    "cf:deploy": "wrangler deploy",
-    "cf:kv": "wrangler kv namespace create DB"
+    "cf:dev": "npx --yes wrangler@4 dev",
+    "cf:deploy": "npx --yes wrangler@4 deploy",
+    "cf:dry-run": "npx --yes wrangler@4 deploy --dry-run",
+    "cf:kv": "npx --yes wrangler@4 kv namespace create DB"
   },
   "dependencies": {
     "express": "^4.19.2",

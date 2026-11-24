@@ -1,5 +1,5 @@
 /* ===== Service Worker پوشاک وستا ===== */
-const VERSION = 'vesta-v4';
+const VERSION = 'vesta-v5';
 const SHELL = `${VERSION}-shell`;
 const RUNTIME = `${VERSION}-runtime`;
 const IMG_CACHE = `${VERSION}-img`;
