@@ -11,10 +11,11 @@ binding = "ASSETS"
 
 # دیتابیس KV — بعد از ساخت KV در Cloudflare، id را اینجا جایگزین کنید
 # ساخت KV:  wrangler kv namespace create DB
-[[kv_namespaces]]
-binding = "DB"
-id = "REPLACE_WITH_YOUR_KV_ID"
-preview_id = "REPLACE_WITH_YOUR_KV_ID"
+# اگر id را اینجا نگذارید، از KV Binding که در داشبورد Cloudflare
+# (Settings → Bindings) با نام DB اضافه کرده‌اید استفاده می‌شود.
+# [[kv_namespaces]]
+# binding = "DB"
+# id = "your-kv-namespace-id"
 
 [observability]
 enabled = true

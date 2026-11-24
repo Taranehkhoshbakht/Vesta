@@ -1,117 +1,88 @@
-# ☁️ راهنمای استقرار روی Cloudflare
+# ☁️ راهنمای استقرار روی Cloudflare (نسخه اصلاح‌شده)
 
-پروژه روی رپو `Taranehkhoshbakht/Vesta` پوش شد. حالا برای اجرا روی Cloudflare دو راه داری:
+> 🛠 **رفع خطای `npm ci` / `EUSAGE`:** این خطا به‌خاطر ناهم‌خوانی `package-lock.json` با `package.json` بود (و اضافه‌بودن `wrangler` در devDependencies). هر دو مشکل رفع شد و `npm ci` حالا بدون خطا اجرا می‌شود.
 
 ---
 
-## 🅰️ روش اول: از داشبورد Cloudflare (بدون نصب چیزی — ساده‌ترین)
+## 🚀 روش پیشنهادی: از داشبورد Cloudflare (بدون ترمینال)
 
-### ۱. ساخت KV Namespace
-1. وارد [dash.cloudflare.com](https://dash.cloudflare.com) شو
-2. منوی چپ → **Storage & Databases** → **KV** → **Create a namespace**
-3. اسمش رو بذار `DB` → Create
-4. روی همون namespace کلیک کن، **Namespace ID** رو کپی کن
+### ۱️⃣ ساخت KV Namespace
+1. [dash.cloudflare.com](https://dash.cloudflare.com) → منوی چپ **Storage & Databases** → **KV** → **Create a namespace**
+2. نام: `DB` → **Create**
 
-### ۲. ساخت Worker از گیت‌هاب
-1. منوی چپ → **Workers & Pages** → **Create** → **Workers** → **Import a repository**
-2. رپو `Taranehkhoshbakht/Vesta` رو انتخاب کن (اگه نمایش داده نشد، اول GitHub رو به Cloudflare وصل کن)
-3. توی صفحه تنظیمات، **Build command** رو خالی بذار و **Deploy command** رو بذار:
-   ```
-   npx wrangler deploy
-   ```
-4. **Deploy** بزن
+### ۲️⃣ ساخت/بازسازی Worker از روی رپو
+1. **Workers & Pages** → **Create** → **Workers** → **Import a repository**
+2. رپو `Taranehkhoshbakht/Vesta` را انتخاب کن
+3. تنظیمات بیلد:
+   - **Build command:** *(خالی بگذار)*
+   - **Deploy command:** `npx wrangler deploy`
+4. **Deploy** → حالا باید با موفقیت بیلد شود ✅
 
-### ۳. وصل کردن KV به Worker
-1. بعد از ساخت Worker → **Settings** → **Bindings** → **Add** → **KV Namespace**
-2. Variable name: `DB`
-3. KV namespace: همون `DB` که ساختی
+> اگر Worker قبلی را داری: **Settings** → **Build** → **Deploy command** را به `npx wrangler deploy` تغییر بده و **Retry deployment** بزن.
+
+### ۳️⃣ وصل کردن KV — ⚠️ این قدم حیاتی است
+بدون این قدم، Worker بالا می‌آید ولی API ارور می‌دهد.
+
+1. Worker → **Settings** → **Variables & Bindings** (یا **Bindings**) → **Add** → **KV Namespace**
+2. **Variable name:** `DB`  *(دقیقاً همین حروف بزرگ)*
+3. **KV namespace:** `DB`
 4. **Save and Deploy**
 
-✅ سایت روی `https://vesta.<subdomain>.workers.dev` بالا میاد.
+### ۴️⃣ تست
+باز کن:
+```
+https://vesta.<your-subdomain>.workers.dev/api/products
+```
+باید JSON محصولات را ببینی. اگر ارور `KV binding "DB" تنظیم نشده است` دیدی → قدم ۳ انجام نشده.
 
-> ⚠️ فایل `public/` به‌عنوان Assets سرو می‌شه و از `wrangler.toml` خونده می‌شه، پس نیازی به Build جداگانه برای فرانت‌اند نیست.
+سپس صفحه اصلی → «ورود» → `09037099476` → کد تایید → دکمه «⚙️ پنل مدیریت» ظاهر می‌شود.
 
 ---
 
-## 🅱️ روش دوم: از ترمینال با Wrangler (سریع‌تر و کامل‌تر)
+## 💻 روش دوم: ترمینال با Wrangler
 
 ```bash
-# ۱. کلون پروژه
 git clone https://github.com/Taranehkhoshbakht/Vesta.git
 cd Vesta
-
-# ۲. نصب
-npm install
-
-# ۳. ورود به Cloudflare (مرورگر باز می‌شه)
+npm install                       # برای لوکال: npx wrangler@4 -y
 npx wrangler login
-
-# ۴. ساخت KV
 npx wrangler kv namespace create DB
-# خروجی: id = "abc123..."  ← این مقدار رو کپی کن
+# → خروجی یک id می‌دهد
 
-# ۵. فایل wrangler.toml رو باز کن و جای REPLACE_WITH_YOUR_KV_ID
-#    (هر دو جا: id و preview_id) همون id رو بذار
+# بخش [[kv_namespaces]] در wrangler.toml را از حالت کامنت خارج کن و id را بگذار:
+#   [[kv_namespaces]]
+#   binding = "DB"
+#   id = "abc123..."
 
-# ۶. تست لوکال
-npx wrangler dev        # → http://localhost:8787
-
-# ۷. انتشار نهایی 🚀
-npx wrangler deploy
+npx wrangler dev                  # تست لوکال → http://localhost:8787
+npx wrangler deploy               # انتشار
 ```
 
 ---
 
-## 🔗 وصل کردن دامنه اختصاصی
-1. Worker → **Settings** → **Domains & Routes** → **Add** → **Custom domain**
-2. دامنه‌ات رو وارد کن (N​​S دامنه باید روی Cloudflare باشه)
-3. تمام — SSL خودکار فعال می‌شه
+## ❓ چرا Deploy command باید `npx wrangler deploy` باشد؟
+Cloudflare به‌صورت خودکار تشخیص می‌دهد پروژه یک Worker است. ولی اگر `wrangler` به‌عنوان devDependency نصب باشد، ممکن است نسخه‌های مختلف با هم تداخل کنند. با `npx wrangler deploy` از نسخه‌ی خود محیط بیلد Cloudflare استفاده می‌شود که همیشه سازگار است.
 
 ---
 
-## ✅ چک‌لیست بعد از استقرار
+## 🩺 عیب‌یابی خطاهای رایج
 
-| تست | انتظار |
+| خطا | راه‌حل |
 |---|---|
-| باز کردن صفحه اصلی | فروشگاه فارسی RTL با ۶ دسته و ۱۶ محصول |
-| ورود با `09037099476` | دکمه «⚙️ پنل مدیریت» ظاهر می‌شه (مدیر کل) |
-| ورود با `09961217945` | پنل مدیریت با دسترسی محدود (پشتیبان) |
-| `/api/products` | JSON محصولات |
-| ثبت سفارش تستی | افزایش موجودی/کاهش و کد رهگیری |
+| `npm ci can only install packages when package.json and package-lock.json are in sync` | ✅ رفع شد. اگر باز دیدی: `rm -rf node_modules package-lock.json && npm install` |
+| `KV binding "DB" تنظیم نشده است` | KV را در Settings → Bindings با نام `DB` اضافه کن |
+| `Assets binding تنظیم نشده است` | `[assets]` در `wrangler.toml` باید حفظ شود |
+| صفحه سفید ولی API سالم است | `[assets] directory` باید `./public` باشد |
+| `Missing wrangler from lock file` | ✅ رفع شد (wrangler از devDependencies حذف شد) |
 
 ---
 
-## ⚠️ نکات مهم برای محیط Production
-
-1. **کد پیامک واقعی:** در حالت فعلی کد تایید (`demoCode`) توی پاسخ API برمی‌گرده — این برای تست خوبه ولی برای فروشگاه واقعی حتماً باید به سرویس پیامک وصل بشه. این کار در `cloudflare/worker.js` بخش `request-otp` انجام می‌شه:
-   ```js
-   // بعد از ساخت code، اینجا API سرویس پیامک رو صدا بزن
-   // await fetch('https://api.kavenegar.com/v1/YOUR_KEY/verify/lookup.json?...')
-   // و demoCode رو از پاسخ حذف کن
-   ```
-
-2. **درگاه پرداخت:** شارژ کیف پول و پرداخت آنلاین فعلاً شبیه‌سازی شده. برای واقعی شدن، به زرین‌پال/آی‌دی‌پی وصلش کن.
-
-3. **امنیت توکن:** توکن ورود در KV ذخیره می‌شه. برای فروشگاه پرترافیک، اضافه کردن هش پسورد و rate-limit روی OTP رو پیشنهاد می‌کنم.
-
-4. **محدودیت KV:** کل دیتابیس در یک کلید ذخیره می‌شه. برای فروشگاه کوچک/متوسط (تا چند صد سفارش در روز) کافیه. برای مقیاس بزرگ‌تر → مهاجرت به **Cloudflare D1**.
-
-5. **نرخ نوشتن KV:** KV برای نوشتن مکرر بهینه نیست (محدودیت ~۱ نوشتن در ثانیه روی یک کلید). برای ترافیک بالا حتماً D1 یا Durable Objects استفاده کن.
+## 🔐 یادآوری امنیتی
+توکن GitHub که در چت فرستادی را **حتماً revoke کن**:
+GitHub → Settings → Developer settings → Personal access tokens → Delete
 
 ---
 
-## 📁 ساختار پروژه
-
-```
-Vesta/
-├── public/              ← فرانت‌اند (HTML/CSS/JS فارسی RTL)
-│   ├── index.html
-│   ├── style.css        ← پالت ۶۰-۳۰-۱۰
-│   └── app.js
-├── cloudflare/
-│   └── worker.js        ← API روی Cloudflare Workers
-├── server.js            ← همان API روی Express (برای VPS/لوکال)
-├── wrangler.toml        ← تنظیمات Cloudflare
-├── package.json
-└── README.md
-```
+## 📌 دو تغییر مهم نسبت به نسخه اول
+1. **`wrangler` از devDependencies حذف شد** — دلیل اصلی خطای `npm ci`. حالا نسخه‌ی خود Cloudflare استفاده می‌شود و بیلد سبک‌تر است (به‌جای ~۴۰ بسته اضافه، فقط ۷۱ بسته اکسپرس).
+2. **`[[kv_namespaces]]` در wrangler.toml کامنت شد** — چون id KV شما را ندارم و `REPLACE_WITH_YOUR_KV_ID` باعث خطای دیپلوی می‌شد. به‌جایش KV را از داشبورد با نام `DB` وصل کن.
