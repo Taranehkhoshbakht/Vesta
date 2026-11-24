@@ -2,16 +2,37 @@
    پوشاک وستا — منطق فرانت‌اند (نسخه موبایل-فرست + PWA)
    =================================================================== */
 
-const API = '';
+function readLocal(key, fallback = null) {
+  try {
+    const value = localStorage.getItem(key);
+    return value === null ? fallback : value;
+  } catch { return fallback; }
+}
+function writeLocal(key, value) {
+  try { localStorage.setItem(key, value); } catch { /* Private browsing may disable persistent storage. */ }
+}
+function removeLocal(key) {
+  try { localStorage.removeItem(key); } catch { /* Private browsing may disable persistent storage. */ }
+}
+function readLocalJSON(key, fallback) {
+  try { return JSON.parse(readLocal(key, JSON.stringify(fallback))); }
+  catch { return fallback; }
+}
+function readLocalArray(key) {
+  const value = readLocalJSON(key, []);
+  return Array.isArray(value) ? value : [];
+}
 
 const state = {
   user: null,
-  token: localStorage.getItem('vesta_token') || null,
+  token: readLocal('vesta_token'),
   products: [],      // لیست فعلی نمایش‌داده‌شده (بعد از فیلتر)
   allProducts: [],   // همه محصولات (برای علاقه‌مندی‌ها)
   categories: [],
-  cart: JSON.parse(localStorage.getItem('vesta_cart') || '[]'),
-  wishlist: JSON.parse(localStorage.getItem('vesta_wish') || '[]'),
+  cart: readLocalArray('vesta_cart')
+    .filter(item => item && typeof item === 'object' && item.productId)
+    .map(item => ({ ...item, qty: Math.max(1, Math.floor(Number(item.qty) || 1)), price: Number(item.price) || 0 })),
+  wishlist: readLocalArray('vesta_wish').filter(id => typeof id === 'string'),
   activeCat: '', search: '',
   sort: 'new', minPrice: '', maxPrice: '', onlyFlash: false,
   visible: 12,
@@ -46,17 +67,17 @@ const ICO = {
   install: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11M7.5 10l4.5 4.5L16.5 10"/><path d="M4 17v3h16v-3"/></svg>',
 };
 const fmt = n => Number(n || 0).toLocaleString('fa-IR');
+const safeColor = value => /^#(?:[\da-f]{3}|[\da-f]{6})$/i.test(String(value || '')) ? String(value) : '#5e6d8c';
+const safeSize = value => /^[\w\u0600-\u06FF -]{1,16}$/.test(String(value || '')) ? String(value) : 'M';
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-/* ---------------- API ---------------- */
+/* ---------------- Local mock API ---------------- */
 async function api(path, opts = {}) {
+  if (!window.VestaMock?.enabled) throw new Error('حالت نمایشی بارگذاری نشده است؛ صفحه را دوباره باز کنید.');
   const headers = { 'Content-Type': 'application/json' };
   if (state.token) headers.Authorization = 'Bearer ' + state.token;
-  const r = await fetch(API + path, { ...opts, headers });
-  const data = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(data.error || 'خطایی رخ داد');
-  return data;
+  return window.VestaMock.request(path, { ...opts, headers }, state.token);
 }
 
 /* ---------------- UI helpers ---------------- */
@@ -75,6 +96,7 @@ function openModal(html) {
 function closeModal() {
   $('modalOverlay').classList.add('hidden');
   $('modalBox').innerHTML = '';
+  state.wishlistModalOpen = false;
   document.body.style.overflow = '';
   setActiveTab('home');
 }
@@ -92,8 +114,8 @@ function closeSheet() {
   setActiveTab('home');
 }
 
-function saveCart() { localStorage.setItem('vesta_cart', JSON.stringify(state.cart)); updateBadges(); }
-function saveWish() { localStorage.setItem('vesta_wish', JSON.stringify(state.wishlist)); updateBadges(); }
+function saveCart() { writeLocal('vesta_cart', JSON.stringify(state.cart)); updateBadges(); }
+function saveWish() { writeLocal('vesta_wish', JSON.stringify(state.wishlist)); updateBadges(); }
 
 function updateBadges() {
   const c = state.cart.reduce((s, i) => s + i.qty, 0);
@@ -109,6 +131,7 @@ function setActiveTab(view = 'home') {
 const isAdmin = () => state.user && ['super_admin', 'manager', 'support', 'editor'].includes(state.user.role);
 const roleName = r => ({ super_admin: 'مدیر کل', manager: 'مدیر فروش', support: 'پشتیبان', editor: 'ویراستار محصول', customer: 'مشتری' }[r] || r);
 const statusName = s => ({ pending: 'در انتظار بررسی', confirmed: 'تایید شده', shipped: 'ارسال شده', delivered: 'تحویل داده شده', cancelled: 'لغو شده' }[s] || s);
+const tierDiscount = points => Number(points) >= 5000 ? 5 : Number(points) >= 2000 ? 3 : Number(points) >= 500 ? 1 : 0;
 const catName = id => (state.categories.find(c => c.id === id) || {}).name || '';
 const PRODUCT_FALLBACKS = {
   'cat-shoes': 'shoes', 'cat-winter': 'winter', 'cat-summer': 'summer',
@@ -132,7 +155,7 @@ if ('serviceWorker' in navigator) {
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
   state.deferredPrompt = e;
-  if (!localStorage.getItem('vesta_install_dismissed')) $('installBar').classList.remove('hidden');
+  if (!readLocal('vesta_install_dismissed')) $('installBar').classList.remove('hidden');
 });
 async function installPWA() {
   if (!state.deferredPrompt) {
@@ -152,7 +175,7 @@ async function installPWA() {
 }
 function dismissInstall() {
   $('installBar').classList.add('hidden');
-  localStorage.setItem('vesta_install_dismissed', '1');
+  writeLocal('vesta_install_dismissed', '1');
 }
 
 /* ---------------- INIT ---------------- */
@@ -164,9 +187,16 @@ async function init() {
   } catch {}
   if (state.token) {
     try { const me = await api('/api/auth/me'); state.user = me.user; }
-    catch { state.token = null; localStorage.removeItem('vesta_token'); }
+    catch { state.token = null; removeLocal('vesta_token'); }
   }
-  await loadAll();
+  try {
+    await loadAll();
+  } catch (e) {
+    console.error('Vesta demo startup failed:', e);
+    const grid = $('productGrid');
+    if (grid) grid.innerHTML = `<div class="empty" role="status">${esc(e.message || 'بارگذاری محصولات انجام نشد')}<br><button class="btn btn-outline" style="margin-top:10px" onclick="retryLoad()">تلاش دوباره</button></div>`;
+    toast('بارگذاری فروشگاه کامل نشد؛ دوباره تلاش کنید', true);
+  }
   renderAuthArea(); updateBadges(); startCountdown();
 
   // اکشن‌های میان‌بر PWA
@@ -179,10 +209,19 @@ async function init() {
 async function loadAll() {
   const d = await api('/api/products');
   state.allProducts = d.products;
+  syncCartProducts();
   state.categories = d.categories;
   renderCatNav(); renderCats();
   if (state.activeCat && !state.categories.some(c => c.id === state.activeCat)) state.activeCat = '';
   await applyFilters(false);
+}
+async function retryLoad() {
+  const grid = $('productGrid');
+  if (grid) grid.innerHTML = '<div class="empty">در حال بارگذاری…</div>';
+  try { await loadAll(); }
+  catch (e) {
+    if (grid) grid.innerHTML = `<div class="empty" role="status">${esc(e.message || 'بارگذاری محصولات انجام نشد')}<br><button class="btn btn-outline" style="margin-top:10px" onclick="retryLoad()">تلاش دوباره</button></div>`;
+  }
 }
 
 /* ---------------- ناوبری دسته‌ها ---------------- */
@@ -326,7 +365,10 @@ async function applyFilters(scroll = true) {
     const d = await api('/api/products?' + q.toString());
     list = d.products;
     if (d.categories) state.categories = d.categories;
-  } catch { list = []; }
+  } catch (e) {
+    list = [];
+    toast(e.message || 'بارگذاری محصولات انجام نشد', true);
+  }
 
   state.products = list;
   state.allProducts = state.search || state.activeCat || state.onlyFlash || state.minPrice || state.maxPrice
@@ -474,9 +516,10 @@ async function openProduct(id) {
   try {
     const d = await api('/api/products/' + id);
     const p = d.product;
+    if (p.isActive === false) return toast('این محصول دیگر در فروشگاه موجود نیست', true);
     state.selectedProduct = p;
-    state.selSize = (p.sizes || [])[1] || (p.sizes || [])[0] || 'M';
-    state.selColor = (p.colors || [])[0] || '#5e6d8c';
+    state.selSize = safeSize((p.sizes || [])[1] || (p.sizes || [])[0] || 'M');
+    state.selColor = safeColor((p.colors || [])[0] || '#5e6d8c');
     const off = offPercent(p);
     const reviews = d.reviews.map(r => `<div class="review">
         <span class="stars-g">${ICO.star.repeat(r.rating)}</span> <b>${esc(r.userName)}</b>
@@ -499,10 +542,10 @@ async function openProduct(id) {
         </div>
         <p style="color:var(--muted);font-size:12.5px;line-height:1.85">${esc(p.description)}</p>
         <div style="margin-top:12px"><b style="font-size:13px">سایز:</b>
-          <div class="size-row">${(p.sizes || []).map(s => `<button class="size-btn ${s === state.selSize ? 'sel' : ''}" onclick="selSize('${s}',this)">${s}</button>`).join('')}</div>
+          <div class="size-row">${(p.sizes || []).map(value => { const size = safeSize(value); return `<button class="size-btn ${size === state.selSize ? 'sel' : ''}" onclick="selSize('${size}',this)">${esc(size)}</button>`; }).join('')}</div>
         </div>
         <div><b style="font-size:13px">رنگ:</b>
-          <div class="color-row">${(p.colors || []).map(c => `<button class="color-dot ${c === state.selColor ? 'sel' : ''}" style="background:${c}" onclick="selColor('${c}',this)" aria-label="رنگ"></button>`).join('')}</div>
+          <div class="color-row">${(p.colors || []).map(value => { const color = safeColor(value); return `<button class="color-dot ${color === state.selColor ? 'sel' : ''}" style="background:${color}" onclick="selColor('${color}',this)" aria-label="رنگ"></button>`; }).join('')}</div>
         </div>
         <div style="margin:10px 0;font-size:12.5px">موجودی: <b>${p.stock > 0 ? fmt(p.stock) + ' عدد' : 'ناموجود'}</b></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -528,12 +571,12 @@ async function openProduct(id) {
   } catch (e) { toast(e.message, true); }
 }
 function selSize(s, el) {
-  state.selSize = s;
+  state.selSize = safeSize(s);
   el.parentElement.querySelectorAll('.size-btn').forEach(b => b.classList.remove('sel'));
   el.classList.add('sel');
 }
 function selColor(c, el) {
-  state.selColor = c;
+  state.selColor = safeColor(c);
   el.parentElement.querySelectorAll('.color-dot').forEach(b => b.classList.remove('sel'));
   el.classList.add('sel');
 }
@@ -551,15 +594,27 @@ function findProduct(id) {
     || state.products.find(x => x.id === id)
     || (state.selectedProduct && state.selectedProduct.id === id ? state.selectedProduct : null);
 }
+function syncCartProducts() {
+  let changed = false;
+  for (const item of state.cart) {
+    const product = state.allProducts.find(candidate => candidate.id === item.productId);
+    if (!product) continue;
+    for (const key of ['title', 'image', 'categoryId', 'price']) {
+      if (item[key] !== product[key]) { item[key] = product[key]; changed = true; }
+    }
+  }
+  if (changed) saveCart();
+}
 function addToCart(id, fromDetail = false) {
   const p = findProduct(id);
-  if (!p) return;
+  if (!p || p.isActive === false) return toast('این محصول دیگر در فروشگاه موجود نیست', true);
   if (p.stock === 0) return toast('این محصول ناموجود است', true);
-  const size = fromDetail ? state.selSize : ((p.sizes || [])[1] || 'M');
-  const color = fromDetail ? state.selColor : ((p.colors || [])[0] || '#5e6d8c');
+  const size = safeSize(fromDetail ? state.selSize : ((p.sizes || [])[1] || 'M'));
+  const color = safeColor(fromDetail ? state.selColor : ((p.colors || [])[0] || '#5e6d8c'));
   const ex = state.cart.find(i => i.productId === id && i.size === size && i.color === color);
+  const inCart = state.cart.filter(i => i.productId === id).reduce((sum, item) => sum + Number(item.qty || 0), 0);
+  if (inCart >= p.stock) return toast('بیشتر از موجودی انبار نمی‌توانید اضافه کنید', true);
   if (ex) {
-    if (ex.qty >= p.stock) return toast('بیشتر از موجودی انبار نمی‌توانید اضافه کنید', true);
     ex.qty++;
   } else {
     state.cart.push({ productId: id, title: p.title, image: p.image, categoryId: p.categoryId, price: p.price, qty: 1, size, color });
@@ -570,8 +625,15 @@ function addToCart(id, fromDetail = false) {
   if (!$('cartDrawer').classList.contains('hidden')) renderCart();
 }
 function changeQty(idx, d) {
-  state.cart[idx].qty += d;
-  if (state.cart[idx].qty <= 0) state.cart.splice(idx, 1);
+  const item = state.cart[idx];
+  if (!item) return;
+  if (d > 0) {
+    const product = state.allProducts.find(candidate => candidate.id === item.productId);
+    const inCart = state.cart.filter(entry => entry.productId === item.productId).reduce((sum, entry) => sum + Number(entry.qty || 0), 0);
+    if (!product || inCart >= product.stock) return toast('بیشتر از موجودی انبار نمی‌توانید اضافه کنید', true);
+  }
+  item.qty += d;
+  if (item.qty <= 0) state.cart.splice(idx, 1);
   saveCart(); renderCart();
 }
 function removeFromCart(idx) { state.cart.splice(idx, 1); saveCart(); renderCart(); }
@@ -596,33 +658,47 @@ function renderCart() {
     $('cartFoot').innerHTML = '<button class="btn btn-primary btn-lg w100" onclick="closeCart()">شروع خرید</button>';
     return;
   }
-  box.innerHTML = state.cart.map((i, idx) => `<div class="cart-item">
-    <img src="${esc(i.image || localImageFallback(i))}" alt="" ${imageAttrs(i)}>
-    <div style="flex:1;min-width:0">
-      <b>${esc(i.title)}</b><br>
-      <small>سایز ${esc(i.size)} · <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:${esc(i.color)};vertical-align:middle"></span></small><br>
-      <b style="color:var(--c60-dark)">${fmt(i.price * i.qty)} تومان</b>
-      <div class="qty">
-        <button onclick="changeQty(${idx},-1)" aria-label="کاهش">−</button>
-        <span>${fmt(i.qty)}</span>
-        <button onclick="changeQty(${idx},1)" aria-label="افزایش">+</button>
-        <button style="border:0;background:none;color:var(--bad);margin-right:auto" onclick="removeFromCart(${idx})" aria-label="حذف"></button>
+  syncCartProducts();
+  box.innerHTML = state.cart.map((i, idx) => {
+    const product = state.allProducts.find(candidate => candidate.id === i.productId);
+    const inCart = state.cart.filter(item => item.productId === i.productId).reduce((sum, item) => sum + Number(item.qty || 0), 0);
+    const unavailable = !product || product.stock < inCart;
+    const cannotIncrease = !product || inCart >= product.stock;
+    return `<div class="cart-item">
+      <img src="${esc(i.image || localImageFallback(i))}" alt="" ${imageAttrs(i)}>
+      <div style="flex:1;min-width:0">
+        <b>${esc(i.title)}</b><br>
+        <small>سایز ${esc(i.size)} · <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:${safeColor(i.color)};vertical-align:middle"></span></small><br>
+        ${unavailable ? '<small class="stock-low">موجودی این محصول تغییر کرده یا محصول دیگر فعال نیست؛ تعداد را اصلاح یا حذف کنید.</small><br>' : ''}
+        <b style="color:var(--c60-dark)">${fmt(i.price * i.qty)} تومان</b>
+        <div class="qty">
+          <button onclick="changeQty(${idx},-1)" aria-label="کاهش">−</button>
+          <span>${fmt(i.qty)}</span>
+          <button ${cannotIncrease ? 'disabled' : ''} onclick="changeQty(${idx},1)" aria-label="افزایش">+</button>
+          <button style="border:0;background:none;color:var(--bad);margin-right:auto" onclick="removeFromCart(${idx})" aria-label="حذف"></button>
+        </div>
       </div>
-    </div>
-  </div>`).join('');
+    </div>`;
+  }).join('');
 
   const sub = cartSubtotal();
-  const threshold = state.settings.freeShippingThreshold || 1000000;
-  const pct = Math.min(100, Math.round(sub / threshold * 100));
-  const remain = threshold - sub;
+  const threshold = Number(state.settings.freeShippingThreshold ?? 1000000);
+  const shippingCost = Number(state.settings.shippingCost ?? 49000);
+  const pct = threshold <= 0 ? 100 : Math.min(100, Math.round(sub / threshold * 100));
+  const remain = Math.max(0, threshold - sub);
+  const unavailableItems = state.cart.some(item => {
+    const product = state.allProducts.find(candidate => candidate.id === item.productId);
+    return !product || product.stock < state.cart.filter(entry => entry.productId === item.productId).reduce((sum, entry) => sum + Number(entry.qty || 0), 0);
+  });
   $('cartFoot').innerHTML = `
     <div style="font-size:12px">${remain > 0
       ? `فقط <b>${fmt(remain)} تومان</b> تا ارسال رایگان`
       : 'ارسال این سفارش رایگان است!'}</div>
     <div class="ship-progress"><i style="width:${pct}%"></i></div>
     <div class="summary"><span>جمع اقلام</span><b>${fmt(sub)} تومان</b></div>
-    <div class="summary"><span>ارسال</span><b>${sub >= threshold ? 'رایگان' : fmt(state.settings.shippingCost || 49000) + ' تومان'}</b></div>
-    <button class="btn btn-primary btn-lg w100" onclick="openCheckout()">ادامه و تسویه</button>
+    <div class="summary"><span>ارسال</span><b>${sub >= threshold ? 'رایگان' : fmt(shippingCost) + ' تومان'}</b></div>
+    ${unavailableItems ? '<div class="alert-box">سبد خرید را بررسی کنید؛ موجودی یک محصول کافی نیست.</div>' : ''}
+    <button class="btn btn-primary btn-lg w100" ${unavailableItems ? 'disabled' : ''} onclick="openCheckout()">ادامه و تسویه</button>
     <button class="btn btn-outline w100" onclick="closeCart()">ادامه خرید</button>`;
 }
 
@@ -645,12 +721,12 @@ let otpPhone = '';
 function openAuth() {
   if (state.user) return openAccount();
   openModal(`<h2>ورود / ثبت‌نام</h2>
-    <p style="color:var(--muted);font-size:12.5px;margin-bottom:12px">شماره موبایل خود را وارد کنید. کد تایید برایتان ارسال می‌شود.</p>
+    <p style="color:var(--muted);font-size:12.5px;margin-bottom:12px">نسخه نمایشی است؛ هیچ پیامکی ارسال نمی‌شود. شماره آزمایشی و کد ۱۲۳۴۵ را وارد کنید.</p>
     <div class="field"><label>شماره موبایل</label>
       <input id="authPhone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="09123456789" dir="ltr" style="text-align:left;letter-spacing:1px"></div>
     <button class="btn btn-primary w100 btn-lg" onclick="requestOtp()">دریافت کد تایید</button>
     <div id="otpBox" class="hidden" style="margin-top:14px">
-      <div class="otp-demo">کد تایید (حالت دمو — در نسخه واقعی پیامک می‌شود):<b id="demoCode">------</b></div>
+      <div class="otp-demo">کد تایید نمایشی (پیامک ارسال نمی‌شود):<b id="demoCode">------</b></div>
       <div class="field"><label>کد تایید ۵ رقمی</label>
         <input id="otpInput" type="tel" inputmode="numeric" maxlength="5" placeholder="12345" dir="ltr" style="text-align:center;letter-spacing:8px;font-size:20px;font-weight:700"></div>
       <div class="field"><label>نام (برای ثبت‌نام جدید)</label><input id="authName" placeholder="نام و نام خانوادگی"></div>
@@ -659,7 +735,8 @@ function openAuth() {
       <button class="btn btn-outline w100" style="margin-top:8px" onclick="requestOtp()">ارسال مجدد کد</button>
     </div>
     <p style="font-size:11px;color:var(--muted);margin-top:14px;line-height:1.9">
-      حساب‌های مدیریتی — مدیر کل: <code>09037099476</code> · پشتیبان: <code>09961217945</code>
+      ورود آزمایشی مدیر کل: <code>09037099476</code> · پشتیبان: <code>09961217945</code><br>
+      کد تایید نمایشی: <code>12345</code> — پیامک واقعی ارسال نمی‌شود.
     </p>`);
 }
 async function requestOtp() {
@@ -671,7 +748,7 @@ async function requestOtp() {
     $('otpBox').classList.remove('hidden');
     $('demoCode').textContent = d.demoCode;
     $('otpInput').focus();
-    toast('کد تایید ارسال شد');
+    toast('کد نمایشی آماده است؛ پیامکی ارسال نشد');
   } catch (e) { toast(e.message, true); }
 }
 async function verifyOtp() {
@@ -683,7 +760,7 @@ async function verifyOtp() {
       body: JSON.stringify({ phone: otpPhone, code, name: $('authName').value.trim(), referralCode: $('authRef').value.trim() })
     });
     state.token = d.token;
-    localStorage.setItem('vesta_token', d.token);
+    writeLocal('vesta_token', d.token);
     state.user = d.user;
     closeModal(); renderAuthArea();
     toast(d.isNew ? 'خوش آمدید! هدیه عضویت به کیف پول اضافه شد' : 'خوش برگشتید');
@@ -692,7 +769,7 @@ async function verifyOtp() {
 }
 async function logout() {
   try { await api('/api/auth/logout', { method: 'POST' }); } catch {}
-  state.token = null; localStorage.removeItem('vesta_token'); state.user = null;
+  state.token = null; removeLocal('vesta_token'); state.user = null;
   renderAuthArea(); closeModal(); showView('home');
   toast('خروج انجام شد');
 }
@@ -749,13 +826,14 @@ async function openWallet() {
       </div>`).join('') || '<p style="color:var(--muted);font-size:12.5px">تراکنشی ثبت نشده است.</p>';
 
     openModal(`<h2>کیف پول من</h2>
+      <div class="alert-box">این کیف پول دمو است؛ شارژ آن پرداخت واقعی ندارد و فقط در همین مرورگر ذخیره می‌شود.</div>
       <div class="wallet-cards">
         <div class="wcard"><b>${fmt(w.wallet)}</b><span>موجودی (تومان)</span></div>
         <div class="wcard"><b>${fmt(w.points)}</b><span>امتیاز باشگاه</span></div>
       </div>
       <div class="row2">
         <div class="field"><label>مبلغ شارژ (تومان)</label><input id="chargeAmt" type="number" inputmode="numeric" placeholder="۲۰۰۰۰۰"></div>
-        <div class="field"><label>&nbsp;</label><button class="btn btn-primary w100" onclick="chargeWallet()">شارژ کیف پول</button></div>
+        <div class="field"><label>&nbsp;</label><button class="btn btn-primary w100" onclick="chargeWallet()">شارژ نمایشی کیف پول</button></div>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
         ${[100000, 200000, 500000, 1000000].map(a => `<button class="chip" onclick="$('chargeAmt').value=${a}">${fmt(a)}</button>`).join('')}
@@ -800,7 +878,7 @@ async function openClub() {
       <p style="font-size:12px;color:var(--muted);line-height:1.9">
         با هر ۱۰۰ هزار تومان خرید، ۱۰ امتیاز می‌گیرید.<br>
         کد معرف شما: <code>${esc(w.referralCode)}</code><br>
-        هر دوستی که با کد شما عضو شود، هر دو نفر <b>${fmt(state.settings.referralBonus || 30000)} تومان</b> پاداش می‌گیرید!
+        هر دوستی که با کد شما عضو شود، هر دو نفر <b>${fmt(state.settings.referralBonus ?? 30000)} تومان</b> پاداش می‌گیرید!
       </p>
       <button class="btn btn-primary w100" style="margin-top:10px" onclick="closeModal();openWallet()">مشاهده کیف پول</button>`);
   } catch (e) { toast(e.message, true); }
@@ -827,8 +905,17 @@ async function openMyOrders() {
 function openCheckout() {
   if (!state.user) { closeCart(); return openAuth(); }
   if (!state.cart.length) return;
+  syncCartProducts();
+  const hasUnavailableItem = state.cart.some(item => {
+    const product = state.allProducts.find(candidate => candidate.id === item.productId);
+    const quantity = state.cart.filter(entry => entry.productId === item.productId).reduce((sum, entry) => sum + Number(entry.qty || 0), 0);
+    return !product || product.stock < quantity;
+  });
+  if (hasUnavailableItem) return toast('سبد خرید را بررسی کنید؛ موجودی یا وضعیت یک محصول تغییر کرده است.', true);
+  closeCart();
   state.checkoutCoupon = null;
   openModal(`<h2>تسویه حساب</h2>
+    <div class="alert-box">حالت نمایشی است؛ سفارش و پرداخت واقعی انجام نمی‌شود و فقط در همین مرورگر ثبت خواهد شد.</div>
     <div class="row2">
       <div class="field"><label>استان</label><input id="coState" placeholder="تهران"></div>
       <div class="field"><label>شهر</label><input id="coCity" placeholder="تهران"></div>
@@ -837,7 +924,7 @@ function openCheckout() {
     <div class="row2">
       <div class="field"><label>کد پستی</label><input id="coZip" inputmode="numeric" placeholder="1234567890"></div>
       <div class="field"><label>روش پرداخت</label>
-        <select id="coPay"><option value="online">پرداخت آنلاین</option><option value="cod">پرداخت در محل</option></select></div>
+        <select id="coPay"><option value="demo_online">پرداخت آنلاین نمایشی</option><option value="demo_cod">پرداخت در محل (نمایشی)</option></select></div>
     </div>
     <div class="field"><label>کد تخفیف (اختیاری)</label>
       <div style="display:flex;gap:8px">
@@ -849,7 +936,7 @@ function openCheckout() {
     <label class="check"><input type="checkbox" id="coWallet" onchange="renderCheckoutSummary()">
       پرداخت از کیف پول (موجودی: ${fmt(state.user.wallet)} تومان)</label>
     <div id="checkoutSummary" style="margin:10px 0"></div>
-    <button class="btn btn-primary btn-lg w100" onclick="placeOrder()">ثبت سفارش</button>`);
+    <button class="btn btn-primary btn-lg w100" onclick="placeOrder()">ثبت سفارش نمایشی</button>`);
   renderCheckoutSummary();
 }
 async function applyCoupon() {
@@ -871,14 +958,18 @@ async function applyCoupon() {
 function renderCheckoutSummary() {
   const el = $('checkoutSummary'); if (!el) return;
   const sub = cartSubtotal();
-  const threshold = state.settings.freeShippingThreshold || 1000000;
-  let shipping = sub >= threshold ? 0 : (state.settings.shippingCost || 49000);
-  const discount = state.checkoutCoupon?.discount || 0;
+  const threshold = Number(state.settings.freeShippingThreshold ?? 1000000);
+  let shipping = sub >= threshold ? 0 : Number(state.settings.shippingCost ?? 49000);
+  const couponDiscount = Math.min(state.checkoutCoupon?.discount || 0, sub);
+  const memberDiscount = Math.floor(Math.max(0, sub - couponDiscount) * tierDiscount(state.user?.points) / 100);
+  const discount = couponDiscount + memberDiscount;
   if (state.checkoutCoupon?.freeShipping) shipping = 0;
-  const walletUse = $('coWallet')?.checked ? Math.min(state.user.wallet, sub - discount + shipping) : 0;
-  const total = sub - discount + shipping - walletUse;
+  const beforeWallet = Math.max(0, sub - discount + shipping);
+  const walletUse = $('coWallet')?.checked ? Math.min(Number(state.user?.wallet || 0), beforeWallet) : 0;
+  const total = beforeWallet - walletUse;
   el.innerHTML = `<div class="summary"><span>جمع اقلام</span><b>${fmt(sub)} تومان</b></div>
-    ${discount ? `<div class="summary"><span>تخفیف کد</span><b style="color:var(--ok)">−${fmt(discount)}</b></div>` : ''}
+    ${couponDiscount ? `<div class="summary"><span>تخفیف کد</span><b style="color:var(--ok)">−${fmt(couponDiscount)}</b></div>` : ''}
+    ${memberDiscount ? `<div class="summary"><span>تخفیف باشگاه (${fmt(tierDiscount(state.user?.points))}٪)</span><b style="color:var(--ok)">−${fmt(memberDiscount)}</b></div>` : ''}
     <div class="summary"><span>ارسال</span><b>${shipping === 0 ? 'رایگان' : fmt(shipping) + ' تومان'}</b></div>
     ${walletUse ? `<div class="summary"><span>از کیف پول</span><b style="color:var(--ok)">−${fmt(walletUse)}</b></div>` : ''}
     <div class="summary total"><span>قابل پرداخت</span><b>${fmt(total)} تومان</b></div>`;
@@ -899,7 +990,7 @@ async function placeOrder() {
     state.cart = []; saveCart(); closeCart();
     openModal(`<div style="text-align:center;padding:16px 4px">
       <div style="width:66px;height:66px;border-radius:50%;background:var(--c30-light);display:grid;place-items:center;margin:0 auto 10px;color:var(--ok)"><svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg></div>
-      <h2 style="padding:0">سفارش ثبت شد!</h2>
+      <h2 style="padding:0">سفارش نمایشی ثبت شد!</h2>
       <p style="font-size:12.5px;line-height:2.1;color:var(--muted)">
         شماره سفارش: <b style="color:var(--ink)">#${fmt(d.order.number)}</b><br>
         کد رهگیری: <code>${esc(d.order.trackingCode)}</code><br>
@@ -1140,8 +1231,11 @@ async function renderAdminOrders() {
   } catch (e) { $('adminMain').innerHTML = `<div class="alert-box">${esc(e.message)}</div>`; }
 }
 async function setOrderStatus(id, status) {
-  try { await api('/api/orders/' + id + '/status', { method: 'PATCH', body: JSON.stringify({ status }) }); toast('وضعیت به‌روز شد '); }
-  catch (e) { toast(e.message, true); renderAdminOrders(); }
+  try {
+    await api('/api/orders/' + id + '/status', { method: 'PATCH', body: JSON.stringify({ status }) });
+    toast('وضعیت به‌روز شد ');
+    renderAdminOrders();
+  } catch (e) { toast(e.message, true); renderAdminOrders(); }
 }
 
 /* ---------- کدهای تخفیف (کامل با ویرایش) ---------- */
@@ -1335,11 +1429,19 @@ async function removeSubadmin(id) {
 }
 
 /* ---------- تنظیمات ---------- */
+function resetDemoData() {
+  if (!confirm('تمام داده‌های نمایشی این مرورگر، از جمله سفارش‌ها و تغییرات مدیریتی، پاک و به نمونه اولیه برگردانده شوند؟')) return;
+  window.VestaMock?.reset();
+  ['vesta_token', 'vesta_cart', 'vesta_wish'].forEach(removeLocal);
+  location.reload();
+}
 async function renderAdminSettings() {
   try {
     const d = await api('/api/admin/settings');
     const s = d.settings;
     $('adminMain').innerHTML = `<h2>تنظیمات فروشگاه</h2>
+      <div class="alert-box"><b>حالت MOCK:</b> سفارش‌ها، ورود، کیف پول و تنظیمات فقط در همین مرورگر ذخیره می‌شوند؛ هیچ پرداخت یا پیامک واقعی انجام نمی‌شود.</div>
+      <button class="btn btn-danger w100" style="margin-bottom:14px" onclick="resetDemoData()">بازنشانی همه داده‌های دمو</button>
       <div class="field"><label>نام فروشگاه</label><input id="stName" value="${esc(s.siteName)}"></div>
       <div class="row2">
         <div class="field"><label>هزینه ارسال (تومان)</label><input id="stShip" type="number" inputmode="numeric" value="${s.shippingCost}"></div>

@@ -46,6 +46,7 @@ code{background:var(--c10-light);padding:2px 9px;border-radius:8px;font-weight:7
 }
 .topbar span{overflow:hidden;text-overflow:ellipsis}
 .topbar b{color:var(--c30)}
+.topbar .demo-chip{display:inline-block;background:var(--c30);color:var(--c60-dark);border-radius:5px;padding:1px 5px;margin-inline-end:4px;font-size:9px;letter-spacing:.4px;vertical-align:1px}
 .topbar-x{font-size:11px;opacity:.7;padding:0 4px;flex-shrink:0}
 .topbar-x:active{opacity:1}
 

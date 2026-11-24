@@ -1,8 +1,20 @@
-# استقرار فروشگاه وستا روی Cloudflare Workers
+# استقرار فروشگاه وستا روی Cloudflare
 
-این پروژه **Cloudflare Worker به‌همراه Static Assets** است، نه پروژه‌ی Cloudflare Pages. فایل Worker در `cloudflare/worker.js` و فایل‌های سایت در `public/` قرار دارند.
+## حالت پیشنهادی MOCK — فقط فرانت‌اند، بدون دیتابیس یا بک‌اند
 
-## استقرار از ترمینال
+برای نسخه‌ی نمایشی فعلی، از **Cloudflare Pages** استفاده کنید؛ این روش فقط فایل‌های داخل `public/` را منتشر می‌کند و به Worker، KV، Node یا تنظیم API نیاز ندارد:
+
+1. در Cloudflare از **Workers & Pages → Create → Pages → Connect to Git** مخزن را انتخاب کنید.
+2. Build command را خالی بگذارید و **Build output directory** را `public` قرار دهید.
+3. برنچ Production را برنچی بگذارید که نسخه‌ی نهایی را دریافت می‌کند؛ پس از merge شدن تغییرات به `main`، همان برنچ را انتخاب کنید.
+
+ورود و خرید در این نسخه نمایشی است؛ کد تایید `12345` است و همه‌ی داده‌ها فقط در localStorage مرورگر می‌مانند. هیچ فراخوانی `/api/*` یا پرداخت واقعی انجام نمی‌شود.
+
+## حالت Worker اختیاری (نسخه‌ی قدیمی با API و KV)
+
+این پروژه علاوه‌بر حالت MOCK، یک **Cloudflare Worker به‌همراه Static Assets** اختیاری هم دارد. فایل Worker در `cloudflare/worker.js` و فایل‌های سایت در `public/` قرار دارند. API این Worker به KV نیاز دارد؛ اما رابط فعلی MOCK آن API را صدا نمی‌زند.
+
+### استقرار از ترمینال
 
 ```bash
 npm ci
