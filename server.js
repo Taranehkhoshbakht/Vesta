@@ -214,6 +214,11 @@ app.get('/api/products', (req, res) => {
   if (sort === 'rating') list.sort((a,b)=>b.rating-a.rating);
   res.json({ products: list, categories: db.categories });
 });
+// لیست کامل محصولات برای پنل مدیریت (شامل غیرفعال‌ها)
+app.get('/api/admin/products', auth, requireAdmin(), (req, res) => {
+  const db = loadDB();
+  res.json({ products: [...db.products].sort((a,b)=>b.createdAt-a.createdAt), categories: db.categories });
+});
 app.get('/api/products/:id', (req, res) => {
   const db = loadDB(); const p = db.products.find(x => x.id === req.params.id);
   if (!p) return res.status(404).json({ error: 'محصول یافت نشد' });
@@ -281,9 +286,34 @@ app.post('/api/coupons/validate', auth, (req, res) => {
   res.json({ success: true, coupon: c, discount });
 });
 app.get('/api/coupons', auth, requireAdmin(['super_admin','manager']), (req, res) => { res.json({ coupons: req.db.coupons }); });
+app.put('/api/coupons/:id', auth, requireAdmin(['super_admin','manager']), (req, res) => {
+  const db = loadDB();
+  const c = db.coupons.find(x => x.id === req.params.id);
+  if (!c) return res.status(404).json({ error: 'کد تخفیف یافت نشد' });
+  const b = req.body || {};
+  if (b.code !== undefined) {
+    const code = String(b.code).trim().toUpperCase();
+    if (!code) return res.status(400).json({ error: 'کد تخفیف نمی‌تواند خالی باشد' });
+    if (db.coupons.some(x => x.id !== c.id && x.code === code))
+      return res.status(400).json({ error: 'این کد قبلاً استفاده شده است' });
+    c.code = code;
+  }
+  if (b.percent !== undefined) c.percent = +b.percent || 0;
+  if (b.maxDiscount !== undefined) c.maxDiscount = +b.maxDiscount || 0;
+  if (b.minAmount !== undefined) c.minAmount = +b.minAmount || 0;
+  if (b.usageLimit !== undefined) c.usageLimit = +b.usageLimit || 1000;
+  if (b.isActive !== undefined) c.isActive = !!b.isActive;
+  if (b.freeShipping !== undefined) c.freeShipping = !!b.freeShipping;
+  c.updatedAt = Date.now();
+  saveDB(db);
+  res.json({ success: true, coupon: c });
+});
 app.post('/api/coupons', auth, requireAdmin(['super_admin','manager']), (req, res) => {
   const db = loadDB(); const b = req.body;
-  const c = { id: uid('c_'), code: String(b.code||'').toUpperCase(), percent: +b.percent||0, maxDiscount: +b.maxDiscount||0, minAmount: +b.minAmount||0, isActive: b.isActive !== false, usageLimit: +b.usageLimit||1000, usedCount: 0, freeShipping: !!b.freeShipping, createdAt: Date.now() };
+  const code = String(b.code||'').trim().toUpperCase();
+  if (!code) return res.status(400).json({ error: 'کد تخفیف الزامی است' });
+  if (db.coupons.some(x => x.code === code)) return res.status(400).json({ error: 'این کد قبلاً استفاده شده است' });
+  const c = { id: uid('c_'), code, percent: +b.percent||0, maxDiscount: +b.maxDiscount||0, minAmount: +b.minAmount||0, isActive: b.isActive !== false, usageLimit: +b.usageLimit||1000, usedCount: 0, freeShipping: !!b.freeShipping, createdAt: Date.now() };
   db.coupons.push(c); saveDB(db); res.json({ success: true, coupon: c });
 });
 app.delete('/api/coupons/:id', auth, requireAdmin(['super_admin','manager']), (req, res) => {

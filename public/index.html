@@ -2,177 +2,224 @@
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,viewport-fit=cover">
+<meta name="theme-color" content="#5e6d8c">
+<meta name="description" content="پوشاک وستا — فروشگاه آنلاین لباس، کفش و اکسسوری با باشگاه مشتریان و کیف پول">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="وستا">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="format-detection" content="telephone=no">
 <title>پوشاک وستا | فروشگاه لباس، کفش و اکسسوری</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<!-- ======= نوار بالا ======= -->
-<div class="topbar">
-  <span>🚚 ارسال رایگان برای خرید بالای <b id="freeShipTop">۱٬۰۰۰٬۰۰۰</b> تومان</span>
-  <span class="topbar-left">🎁 هدیه عضویت: <b>۵۰٬۰۰۰ تومان</b> در کیف پول + <b>۱۰۰ امتیاز</b> باشگاه مشتریان</span>
+<!-- ======= نوار اعلان (قابل بستن) ======= -->
+<div class="topbar" id="topbar">
+  <span>ارسال رایگان بالای <b id="freeShipTop">۱٬۰۰۰٬۰۰۰</b> تومان</span>
+  <button class="topbar-x" onclick="document.getElementById('topbar').remove()" aria-label="بستن">✕</button>
+</div>
+
+<!-- ======= اعلان نصب PWA ======= -->
+<div class="install-bar hidden" id="installBar">
+  <span class="install-ic">V</span>
+  <div class="install-txt"><b>وستا را نصب کن</b><small>سریع‌تر، آفلاین، مثل یک اپ</small></div>
+  <button class="btn btn-primary btn-sm" onclick="installPWA()">نصب</button>
+  <button class="install-x" onclick="dismissInstall()" aria-label="بستن">✕</button>
 </div>
 
 <!-- ======= هدر ======= -->
 <header class="header">
-  <div class="container header-in">
-    <a class="logo" href="#" onclick="showView('home');return false">
-      <span class="logo-badge">و</span>
-      <span><b>پوشاک وستا</b><small>VESTA FASHION</small></span>
-    </a>
+  <div class="header-in">
+    <button class="hbtn logo" onclick="goHome()" aria-label="صفحه اصلی">
+      <span class="logo-badge">V</span>
+      <span class="logo-txt"><b>وستا</b><small>VESTA</small></span>
+    </button>
+
     <div class="searchbox">
-      <input id="searchInput" placeholder="جستجو در محصولات... مثلاً: کاپشن، کفش، هودی">
-      <button onclick="doSearch()">🔍</button>
+      <input id="searchInput" type="search" placeholder="جستجوی محصول..." enterkeyhint="search" autocomplete="off">
+      <button onclick="doSearch()" aria-label="جستجو"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button>
     </div>
-    <nav class="header-actions">
-      <button class="icon-btn" onclick="toggleWishlistView()" title="علاقه‌مندی‌ها">❤️ <span id="wishCount" class="badge">۰</span></button>
-      <button class="icon-btn" onclick="openCart()" title="سبد خرید">🛒 <span id="cartCount" class="badge">۰</span></button>
-      <button id="authBtn" class="btn btn-primary" onclick="openAuth()">ورود / ثبت‌نام</button>
-      <button id="adminBtn" class="btn btn-dark hidden" onclick="showView('admin')">⚙️ پنل مدیریت</button>
-    </nav>
+
+    <div class="header-actions">
+      <button class="hbtn" onclick="toggleWishlistView()" aria-label="علاقه‌مندی‌ها">
+        <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1L12 21l7.7-7.6 1.1-1a5.5 5.5 0 0 0 0-7.8z"/></svg><span id="wishCount" class="badge">۰</span>
+      </button>
+      <button class="hbtn" onclick="openCart()" aria-label="سبد خرید">
+        <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1.6"/><circle cx="19" cy="21" r="1.6"/><path d="M2.5 3h2.2l2.5 12.4a2 2 0 0 0 2 1.6h9.1a2 2 0 0 0 2-1.6L22 7H6"/></svg><span id="cartCount" class="badge">۰</span>
+      </button>
+      <button id="authBtn" class="hbtn hbtn-auth" onclick="openAuth()" aria-label="ورود">
+        <span class="auth-ico"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/></svg></span><span class="auth-txt">ورود</span>
+      </button>
+      <button id="adminBtn" class="hbtn hbtn-admin hidden" onclick="showView('admin')" aria-label="پنل مدیریت"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2 2 2 0 1 1-4 0 1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 4.6 15a2 2 0 1 1 0-4 1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 11.5 4a2 2 0 1 1 4 0 1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 22.4 11a2 2 0 1 1 0 4z"/></svg></button>
+    </div>
   </div>
-  <div class="catnav"><div class="container" id="catNav"></div></div>
+  <div class="catnav"><div class="catnav-in" id="catNav"></div></div>
 </header>
 
 <!-- ======= ویوی فروشگاه ======= -->
 <main id="shopView">
-  <!-- هیرو -->
   <section class="hero">
-    <div class="container hero-in">
+    <div class="hero-in">
       <div class="hero-text">
-        <span class="hero-tag">✨ کالکشن جدید پاییز و زمستان ۱۴۰۵</span>
+        <span class="hero-tag">کالکشن پاییز و زمستان ۱۴۰۵</span>
         <h1>استایل تو،<br><span>امضای توئه</span></h1>
-        <p>لباس، کفش و اکسسوری با کیفیت درجه‌یک و قیمت منصفانه. با باشگاه مشتریان وستا امتیاز جمع کن، کیف پولت رو شارژ کن و هر خریدت رو سودآورتر کن.</p>
+        <p>لباس، کفش و اکسسوری با کیفیت درجه‌یک. با باشگاه مشتریان وستا امتیاز جمع کن و از کیف پولت استفاده کن.</p>
         <div class="hero-btns">
-          <button class="btn btn-primary btn-lg" onclick="scrollToProducts()">🛍️ خرید کن</button>
-          <button class="btn btn-outline btn-lg" onclick="openClub()">⭐ باشگاه مشتریان</button>
+          <button class="btn btn-light btn-lg" onclick="scrollToProducts()">خرید کن</button>
+          <button class="btn btn-outline-light btn-lg" onclick="openClub()">باشگاه مشتریان</button>
         </div>
         <div class="hero-stats">
-          <div><b>+۱۲٬۰۰۰</b><span>مشتری وفادار</span></div>
-          <div><b>۴.۸ از ۵</b><span>امتیاز رضایت</span></div>
-          <div><b>۲۴ ساعت</b><span>تحویل سریع</span></div>
+          <div><b>۱۲ هزار</b><span>مشتری وفادار</span></div>
+          <div><b>۴.۸/۵</b><span>رضایت</span></div>
+          <div><b>۲۴ ساعت</b><span>ارسال سریع</span></div>
         </div>
       </div>
       <div class="hero-img">
-        <img src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=900&auto=format&fit=crop" alt="فروشگاه پوشاک">
-        <div class="hero-card">🔥 تا ۴۰٪ تخفیف<br><small>فروش ویژه محدود</small></div>
+        <img src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=900&auto=format&fit=crop" alt="" width="900" height="600">
+        <div class="hero-card"><b style="color:var(--bad)">تا ۴۰٪ تخفیف</b><br><small>فروش ویژه محدود</small></div>
       </div>
     </div>
   </section>
 
-  <!-- فروش فلش -->
-  <section class="container flash-sec">
+  <section class="flash-sec">
     <div class="sec-head">
-      <h2>⚡ فروش فلش</h2>
-      <div class="countdown">پایان فروش در <b id="countdown">--:--:--</b></div>
+      <h2>فروش فلش ⚡</h2>
+      <div class="countdown"><b id="countdown">--:--:--</b></div>
     </div>
-    <div id="flashRow" class="product-row"></div>
+    <div id="flashRow" class="hscroll"></div>
   </section>
 
-  <!-- دسته‌بندی‌ها -->
-  <section class="container">
+  <section class="sec">
     <div class="sec-head"><h2>دسته‌بندی‌ها</h2></div>
     <div id="catGrid" class="cat-grid"></div>
   </section>
 
-  <!-- محصولات -->
-  <section class="container" id="productsSec">
+  <section class="sec" id="productsSec">
     <div class="sec-head">
       <h2 id="productsTitle">همه محصولات</h2>
-      <select id="sortSel" onchange="applyFilters()">
-        <option value="new">جدیدترین</option>
-        <option value="popular">پرفروش‌ترین</option>
-        <option value="cheap">ارزان‌ترین</option>
-        <option value="expensive">گران‌ترین</option>
-        <option value="rating">بالاترین امتیاز</option>
-      </select>
+      <button class="filter-btn" onclick="openFilters()">فیلتر و مرتب‌سازی <span id="filterDot" class="filter-dot hidden"></span></button>
     </div>
-    <div class="shop-layout">
-      <aside class="filters">
-        <h3>فیلترها</h3>
-        <label>حداقل قیمت (تومان)</label>
-        <input type="number" id="minPrice" placeholder="مثلاً ۵۰۰۰۰۰" onchange="applyFilters()">
-        <label>حداکثر قیمت (تومان)</label>
-        <input type="number" id="maxPrice" placeholder="مثلاً ۲۰۰۰۰۰۰" onchange="applyFilters()">
-        <label class="check"><input type="checkbox" id="onlyFlash" onchange="applyFilters()"> فقط تخفیف‌دارها</label>
-        <button class="btn btn-outline w100" onclick="clearFilters()">حذف فیلترها</button>
-        <div class="side-promo">
-          <b>🎁 کد تخفیف اولین خرید</b>
-          <code>WELCOME10</code>
-          <small>۱۰٪ تخفیف تا ۲۰۰ هزار تومان</small>
-        </div>
-      </aside>
-      <div id="productGrid" class="product-grid"></div>
+    <div class="chips" id="sortChips">
+      <button data-sort="new" class="chip active" onclick="setSort('new')">جدیدترین</button>
+      <button data-sort="popular" class="chip" onclick="setSort('popular')">پرفروش</button>
+      <button data-sort="cheap" class="chip" onclick="setSort('cheap')">ارزان‌ترین</button>
+      <button data-sort="expensive" class="chip" onclick="setSort('expensive')">گران‌ترین</button>
+      <button data-sort="rating" class="chip" onclick="setSort('rating')">بهترین امتیاز</button>
     </div>
+    <div id="productGrid" class="product-grid"></div>
+    <button class="load-more hidden" id="loadMore" onclick="loadMore()">محصولات بیشتر</button>
   </section>
 
-  <!-- امکانات -->
-  <section class="container features">
-    <div class="feat"><span>🚚</span><b>ارسال سریع</b><small>تحویل ۲۴ تا ۴۸ ساعته در سراسر کشور</small></div>
-    <div class="feat"><span>↩️</span><b>۷ روز ضمانت بازگشت</b><small>بدون قید و شرط، وجه شما برمی‌گردد</small></div>
-    <div class="feat"><span>👛</span><b>کیف پول اختصاصی</b><small>شارژ کن و با تخفیف بیشتر خرید کن</small></div>
-    <div class="feat"><span>⭐</span><b>باشگاه مشتریان</b><small>با هر خرید امتیاز بگیر و سطحت رو بالا ببر</small></div>
+  <section class="sec features">
+    <div class="feat"><span class="fico"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 6.5h12v10h-12z"/><path d="M13.5 10h4l3 3v3.5h-7z"/><circle cx="5.5" cy="18.5" r="1.8"/><circle cx="17.5" cy="18.5" r="1.8"/></svg></span><b>ارسال سریع</b><small>تحویل ۲۴ تا ۴۸ ساعته</small></div>
+    <div class="feat"><span class="fico"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg></span><b>۷ روز بازگشت</b><small>بدون قید و شرط</small></div>
+    <div class="feat"><span class="fico"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5.5" width="19" height="14" rx="3"/><path d="M2.5 10h19"/><circle cx="17.5" cy="15" r="1.3"/></svg></span><b>کیف پول</b><small>شارژ کن، بیشتر بخر</small></div>
+    <div class="feat"><span class="fico"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l8 3v6c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10z"/><path d="M9 12l2 2 4-4"/></svg></span><b>باشگاه مشتریان</b><small>هر خرید امتیاز دارد</small></div>
   </section>
 
-  <!-- باشگاه مشتریان -->
-  <section class="container club-banner">
+  <section class="sec club-banner">
     <div>
-      <h2>⭐ باشگاه مشتریان وستا</h2>
-      <p>با هر ۱۰۰ هزار تومان خرید، <b>۱۰ امتیاز</b> بگیر. امتیازها = تخفیف در خرید بعدی + پاداش کیف پول. سطوح: برنزی، نقره‌ای و طلایی با تخفیف‌های ویژه.</p>
-      <button class="btn btn-primary" onclick="openClub()">مشاهده باشگاه من</button>
+      <h2>باشگاه مشتریان وستا</h2>
+      <p>با هر ۱۰۰ هزار تومان خرید، <b>۱۰ امتیاز</b> بگیر. امتیازها = تخفیف دائمی روی خریدهای بعدی.</p>
+      <button class="btn btn-primary" onclick="openClub()">باشگاه من</button>
     </div>
     <div class="club-tiers">
-      <div class="tier" style="--c:#b07a4f"><b>برنزی</b><span>۵۰۰+ امتیاز</span><small>۱٪ تخفیف</small></div>
-      <div class="tier" style="--c:#8a94a6"><b>نقره‌ای</b><span>۲۰۰۰+ امتیاز</span><small>۳٪ تخفیف</small></div>
-      <div class="tier" style="--c:#c9a227"><b>طلایی</b><span>۵۰۰۰+ امتیاز</span><small>۵٪ تخفیف</small></div>
+      <div class="tier" style="--c:#b07a4f"><b>برنزی</b><span>۵۰۰+</span><small>۱٪ تخفیف</small></div>
+      <div class="tier" style="--c:#8a94a6"><b>نقره‌ای</b><span>۲۰۰۰+</span><small>۳٪ تخفیف</small></div>
+      <div class="tier" style="--c:#c9a227"><b>طلایی</b><span>۵۰۰۰+</span><small>۵٪ تخفیف</small></div>
     </div>
   </section>
 </main>
 
 <!-- ======= ویوی پنل مدیریت ======= -->
 <main id="adminView" class="hidden">
-  <div class="admin-layout container">
-    <aside class="admin-side">
-      <div class="admin-user" id="adminUserBox"></div>
-      <button data-tab="dashboard" class="side-btn active" onclick="adminTab('dashboard')">📊 داشبورد</button>
-      <button data-tab="products" class="side-btn" onclick="adminTab('products')">👕 محصولات</button>
-      <button data-tab="categories" class="side-btn" onclick="adminTab('categories')">🗂️ دسته‌بندی‌ها</button>
-      <button data-tab="orders" class="side-btn" onclick="adminTab('orders')">📦 سفارش‌ها</button>
-      <button data-tab="users" class="side-btn" onclick="adminTab('users')">👥 مشتریان</button>
-      <button data-tab="subadmins" class="side-btn super-only" onclick="adminTab('subadmins')">🛡️ زیرمدیران</button>
-      <button data-tab="coupons" class="side-btn" onclick="adminTab('coupons')">🎟️ کدهای تخفیف</button>
-      <button data-tab="settings" class="side-btn super-only" onclick="adminTab('settings')">⚙️ تنظیمات فروشگاه</button>
-      <button class="side-btn" onclick="showView('home')">🏠 بازگشت به فروشگاه</button>
-    </aside>
-    <section class="admin-main" id="adminMain"></section>
+  <div class="admin-wrap">
+    <div class="admin-topbar">
+      <button class="hbtn" onclick="showView('home')" aria-label="بازگشت"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+      <b>پنل مدیریت</b>
+      <span id="adminRoleBadge" class="role-tag"></span>
+    </div>
+    <div class="admin-tabs" id="adminTabs"></div>
+    <div class="admin-main" id="adminMain"></div>
   </div>
 </main>
 
 <!-- ======= فوتر ======= -->
 <footer>
-  <div class="container footer-in">
-    <div><b>پوشاک وستا</b><p>فروشگاه آنلاین لباس، کفش و اکسسوری با ضمانت اصالت کالا و ۷ روز مهلت بازگشت.</p></div>
-    <div><b>دسترسی سریع</b><a href="#" onclick="showView('home');return false">صفحه اصلی</a><a href="#" onclick="openClub();return false">باشگاه مشتریان</a><a href="#" onclick="openWallet();return false">کیف پول</a></div>
-    <div><b>پشتیبانی</b><p>📞 ۰۹۹۶۱۲۱۷۹۴۵<br>✉️ support@vesta.shop<br>🕐 شنبه تا پنجشنبه ۹ تا ۱۸</p></div>
+  <div class="footer-in">
+    <div>
+      <div class="foot-logo"><span class="logo-badge sm">V</span><b>پوشاک وستا</b></div>
+      <p>فروشگاه آنلاین لباس، کفش و اکسسوری با ضمانت اصالت کالا و ۷ روز مهلت بازگشت.</p>
+    </div>
+    <div>
+      <b>دسترسی سریع</b>
+      <a href="#" onclick="goHome();return false">صفحه اصلی</a>
+      <a href="#" onclick="openClub();return false">باشگاه مشتریان</a>
+      <a href="#" onclick="openWallet();return false">کیف پول</a>
+      <a href="#" onclick="openMyOrders();return false">سفارش‌های من</a>
+    </div>
+    <div>
+      <b>پشتیبانی</b>
+      <a href="tel:09961217945">۰۹۹۶۱۲۱۷۹۴۵</a>
+      <a href="mailto:support@vesta.shop">support@vesta.shop</a>
+      <p>شنبه تا پنجشنبه ۹ تا ۱۸</p>
+    </div>
   </div>
   <div class="copyright">© ۱۴۰۵ پوشاک وستا — تمامی حقوق محفوظ است.</div>
 </footer>
 
-<!-- ======= مودال‌ها ======= -->
+<!-- ======= نوار پایین موبایل ======= -->
+<nav class="tabbar" id="tabbar">
+  <button class="tab active" data-view="home" onclick="goHome()">
+    <span><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.8V21h14V9.8"/></svg></span><small>خانه</small>
+  </button>
+  <button class="tab" data-view="cats" onclick="openCatsSheet()">
+    <span><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></svg></span><small>دسته‌ها</small>
+  </button>
+  <button class="tab" data-view="cart" onclick="openCart()">
+    <span><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1.6"/><circle cx="19" cy="21" r="1.6"/><path d="M2.5 3h2.2l2.5 12.4a2 2 0 0 0 2 1.6h9.1a2 2 0 0 0 2-1.6L22 7H6"/></svg><i class="tab-badge" id="tabCartBadge">۰</i></span><small>سبد</small>
+  </button>
+  <button class="tab" data-view="wish" onclick="toggleWishlistView()">
+    <span><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1L12 21l7.7-7.6 1.1-1a5.5 5.5 0 0 0 0-7.8z"/></svg></span><small>علاقه</small>
+  </button>
+  <button class="tab" data-view="me" onclick="openAccount()">
+    <span><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/></svg></span><small>حسابم</small>
+  </button>
+</nav>
+
+<!-- ======= مودال ======= -->
 <div id="modalOverlay" class="overlay hidden" onclick="if(event.target===this)closeModal()">
   <div class="modal" id="modalBox"></div>
 </div>
 
+<!-- ======= شیت پایین (موبایل) ======= -->
+<div id="bottomSheet" class="sheet-wrap hidden" onclick="if(event.target===this)closeSheet()">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <b id="sheetTitle">فیلترها</b>
+      <button onclick="closeSheet()" aria-label="بستن">✕</button>
+    </div>
+    <div class="sheet-body" id="sheetBody"></div>
+    <div class="sheet-foot" id="sheetFoot"></div>
+  </div>
+</div>
+
 <!-- سبد خرید کشویی -->
-<div id="cartDrawer" class="drawer hidden">
-  <div class="drawer-head"><b>🛒 سبد خرید</b><button onclick="closeCart()">✕</button></div>
+<div id="drawerOverlay" class="overlay hidden" onclick="closeCart()"></div>
+<aside id="cartDrawer" class="drawer hidden">
+  <div class="drawer-head"><b>🛒 سبد خرید</b><button onclick="closeCart()" aria-label="بستن">✕</button></div>
   <div id="cartItems" class="drawer-body"></div>
   <div class="drawer-foot" id="cartFoot"></div>
-</div>
-<div id="drawerOverlay" class="overlay hidden" onclick="closeCart()"></div>
+</aside>
 
 <div id="toast" class="toast hidden"></div>
 

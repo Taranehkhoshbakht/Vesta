@@ -209,6 +209,11 @@ export default {
         if (sort === 'rating') list.sort((a, b) => b.rating - a.rating);
         return json({ products: list, categories: db.categories });
       }
+      if (path === '/api/admin/products' && method === 'GET') {
+        const a = await requireAuth(request, env); if (a.error) return a.error;
+        const e = requireAdmin(a.user); if (e) return e;
+        return json({ products: [...a.db.products].sort((x, y) => y.createdAt - x.createdAt), categories: a.db.categories });
+      }
       const prodMatch = path.match(/^\/api\/products\/(.+)$/);
       if (prodMatch && method === 'GET') {
         const db = await loadDB(env); const p = db.products.find(x => x.id === prodMatch[1]);
@@ -269,6 +274,29 @@ export default {
         let discount = 0; if (c.percent) discount = Math.min(Math.floor(body.amount * c.percent / 100), c.maxDiscount || Infinity);
         return json({ success: true, coupon: c, discount });
       }
+      const couponPutMatch = path.match(/^\/api\/coupons\/(.+)$/);
+      if (couponPutMatch && method === 'PUT') {
+        const a = await requireAuth(request, env); if (a.error) return a.error;
+        const e = requireAdmin(a.user, ['super_admin', 'manager']); if (e) return e;
+        const c = a.db.coupons.find(x => x.id === couponPutMatch[1]);
+        if (!c) return err('کد تخفیف یافت نشد', 404);
+        const b = body || {};
+        if (b.code !== undefined) {
+          const code = String(b.code).trim().toUpperCase();
+          if (!code) return err('کد تخفیف نمی‌تواند خالی باشد');
+          if (a.db.coupons.some(x => x.id !== c.id && x.code === code)) return err('این کد قبلاً استفاده شده است');
+          c.code = code;
+        }
+        if (b.percent !== undefined) c.percent = +b.percent || 0;
+        if (b.maxDiscount !== undefined) c.maxDiscount = +b.maxDiscount || 0;
+        if (b.minAmount !== undefined) c.minAmount = +b.minAmount || 0;
+        if (b.usageLimit !== undefined) c.usageLimit = +b.usageLimit || 1000;
+        if (b.isActive !== undefined) c.isActive = !!b.isActive;
+        if (b.freeShipping !== undefined) c.freeShipping = !!b.freeShipping;
+        c.updatedAt = Date.now();
+        await saveDB(env, a.db);
+        return json({ success: true, coupon: c });
+      }
       if (path === '/api/coupons' && method === 'GET') {
         const a = await requireAuth(request, env); if (a.error) return a.error;
         const e = requireAdmin(a.user, ['super_admin', 'manager']); if (e) return e;
@@ -277,7 +305,10 @@ export default {
       if (path === '/api/coupons' && method === 'POST') {
         const a = await requireAuth(request, env); if (a.error) return a.error;
         const e = requireAdmin(a.user, ['super_admin', 'manager']); if (e) return e;
-        const c = { id: uid('c_'), code: String(body.code || '').toUpperCase(), percent: +body.percent || 0, maxDiscount: +body.maxDiscount || 0, minAmount: +body.minAmount || 0, isActive: body.isActive !== false, usageLimit: +body.usageLimit || 1000, usedCount: 0, freeShipping: !!body.freeShipping, createdAt: Date.now() };
+        const code = String(body.code || '').trim().toUpperCase();
+        if (!code) return err('کد تخفیف الزامی است');
+        if (a.db.coupons.some(x => x.code === code)) return err('این کد قبلاً استفاده شده است');
+        const c = { id: uid('c_'), code, percent: +body.percent || 0, maxDiscount: +body.maxDiscount || 0, minAmount: +body.minAmount || 0, isActive: body.isActive !== false, usageLimit: +body.usageLimit || 1000, usedCount: 0, freeShipping: !!body.freeShipping, createdAt: Date.now() };
         a.db.coupons.push(c); await saveDB(env, a.db); return json({ success: true, coupon: c });
       }
       const couponMatch = path.match(/^\/api\/coupons\/(.+)$/);
